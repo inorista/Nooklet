@@ -14,13 +14,13 @@ struct NookletApp: App {
                     .overlay {
                         switch activeTab {
                         case .home:
-                            HomeScreen()
+                            ChatScreen()
 
                         case .search:
                            RecordingScreen()
 
                         default:
-                            HomeScreen()
+                            ChatScreen()
                         }
                     }
                 MorphingTabBar(activeTab: $activeTab, isExpanded: $isExpanded) {

@@ -32,3 +32,6 @@ Samples/**/*.flac
 __pycache__/
 *.pyc
 .venv/
+
+# Large LLM model task files
+*.task
