@@ -115,10 +115,10 @@ class ChatViewModel: ObservableObject {
 
         do {
             NSLog("Attempting to load model: \(identifier.displayName)")
-            currentOnDeviceModel = try OnDeviceModel(
+            currentOnDeviceModel = try await OnDeviceModel(
                 modelIdentifier: identifier
             )
-            currentChat = try Chat(
+            currentChat = try await Chat(
                 model: currentOnDeviceModel!,
                 topK: self.topK,
                 topP: Float(self.topP),  // Cast to Float
@@ -330,31 +330,33 @@ class ChatViewModel: ObservableObject {
 
         // Re-initialize the chat session to clear LLM context
         if let model = self.currentOnDeviceModel {  // Use currentOnDeviceModel
-            do {
-                self.currentChat = try Chat(
-                    model: model,
-                    topK: self.topK,
-                    topP: Float(self.topP),  // Cast to Float
-                    temperature: Float(self.temperature),  // Cast to Float
-                    enableVisionModality: self.enableVisionModality
-                )
-                messages.append(
-                    Message(
-                        content:
-                            "Chat context cleared. Ready for new conversation with \(model.identifier.displayName).",
-                        isUserMessage: false
+            Task { @MainActor in
+                do {
+                    self.currentChat = try await Chat(
+                        model: model,
+                        topK: self.topK,
+                        topP: Float(self.topP),  // Cast to Float
+                        temperature: Float(self.temperature),  // Cast to Float
+                        enableVisionModality: self.enableVisionModality
                     )
-                )
-            } catch {
-                let clearChatErrorMessage =
-                    "Error re-initializing chat session after clearing: \(error.localizedDescription)"
-                NSLog(clearChatErrorMessage)
-                messages.append(
-                    Message(
-                        content: clearChatErrorMessage,
-                        isUserMessage: false
+                    messages.append(
+                        Message(
+                            content:
+                                "Chat context cleared. Ready for new conversation with \(model.identifier.displayName).",
+                            isUserMessage: false
+                        )
                     )
-                )
+                } catch {
+                    let clearChatErrorMessage =
+                        "Error re-initializing chat session after clearing: \(error.localizedDescription)"
+                    NSLog(clearChatErrorMessage)
+                    messages.append(
+                        Message(
+                            content: clearChatErrorMessage,
+                            isUserMessage: false
+                        )
+                    )
+                }
             }
         } else {
             messages.append(
@@ -411,8 +413,6 @@ class ChatViewModel: ObservableObject {
     /// This will clear the current chat history as the LLM context changes.
     public func applyInferenceSettingsAndReinitializeChat() {
         isApplyingSettings = true  // Indicate settings application has started
-        defer { isApplyingSettings = false }  // Ensure this is reset
-
         generationTask?.cancel()  // Cancel any ongoing generation
         messages.removeAll()
         isThinking = false
@@ -421,44 +421,47 @@ class ChatViewModel: ObservableObject {
         inputText = ""
 
         guard let model = self.currentOnDeviceModel else {
+            isApplyingSettings = false
             let noModelErrorMessage = "Cannot apply settings: No model loaded."
             NSLog(noModelErrorMessage)
             messages.append(
                 Message(content: noModelErrorMessage, isUserMessage: false)
             )
-            // Potentially set criticalError if this state is problematic
             return
         }
 
-        do {
-            self.currentChat = try Chat(
-                model: model,
-                topK: self.topK,
-                topP: Float(self.topP),  // Cast to Float
-                temperature: Float(self.temperature),  // Cast to Float
-                enableVisionModality: self.enableVisionModality
-            )
-            messages.append(
-                Message(
-                    content:
-                        "Inference settings applied. Chat context reset. Ready for new conversation with \(model.identifier.displayName).",
-                    isUserMessage: false
+        Task { @MainActor in
+            do {
+                self.currentChat = try await Chat(
+                    model: model,
+                    topK: self.topK,
+                    topP: Float(self.topP),  // Cast to Float
+                    temperature: Float(self.temperature),  // Cast to Float
+                    enableVisionModality: self.enableVisionModality
                 )
-            )
-            NSLog(
-                "Inference settings applied. topK: \(self.topK), topP: \(self.topP), temp: \(self.temperature), vision: \(self.enableVisionModality)"
-            )
-        } catch {
-            let applySettingsErrorMessage =
-                "Error applying inference settings: \(error.localizedDescription)"
-            NSLog(applySettingsErrorMessage)
-            messages.append(
-                Message(
-                    content: applySettingsErrorMessage,
-                    isUserMessage: false
+                self.isApplyingSettings = false
+                messages.append(
+                    Message(
+                        content:
+                            "Inference settings applied. Chat context reset. Ready for new conversation with \(model.identifier.displayName).",
+                        isUserMessage: false
+                    )
                 )
-            )
-            // Potentially set criticalError
+                NSLog(
+                    "Inference settings applied. topK: \(self.topK), topP: \(self.topP), temp: \(self.temperature), vision: \(self.enableVisionModality)"
+                )
+            } catch {
+                self.isApplyingSettings = false
+                let applySettingsErrorMessage =
+                    "Error applying inference settings: \(error.localizedDescription)"
+                NSLog(applySettingsErrorMessage)
+                messages.append(
+                    Message(
+                        content: applySettingsErrorMessage,
+                        isUserMessage: false
+                    )
+                )
+            }
         }
     }
 

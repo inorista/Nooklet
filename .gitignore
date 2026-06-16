@@ -33,5 +33,6 @@ __pycache__/
 *.pyc
 .venv/
 
-# Large LLM model task files
+# Large LLM model files
 *.task
+*.litertlm

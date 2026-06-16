@@ -5,6 +5,7 @@ struct NookletApp: App {
     @State private var router = AppRouter()
     @State private var activeTab: AppTab = .home
     @State private var isExpanded: Bool = false
+    @State private var isKeyboardVisible: Bool = false
 
     var body: some Scene {
         WindowGroup {
@@ -12,16 +13,18 @@ struct NookletApp: App {
                 Rectangle()
                     .foregroundStyle(.clear)
                     .overlay {
-                        switch activeTab {
-                        case .home:
+                        ZStack {
                             ChatScreen()
+                                .scaleEffect(activeTab == .search ? 0.95 : 1.0)
+                                .opacity(activeTab == .search ? 0 : 1)
+                                .allowsHitTesting(activeTab != .search)
 
-                        case .search:
-                           RecordingScreen()
-
-                        default:
-                            ChatScreen()
+                            RecordingScreen()
+                                .scaleEffect(activeTab == .search ? 1.0 : 0.95)
+                                .opacity(activeTab == .search ? 1 : 0)
+                                .allowsHitTesting(activeTab == .search)
                         }
+                        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: activeTab)
                     }
                 MorphingTabBar(activeTab: $activeTab, isExpanded: $isExpanded) {
                 }

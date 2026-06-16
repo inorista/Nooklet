@@ -15,21 +15,16 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad
 
 packages:
-  SwiftTasksGenAI:
-    url: https://github.com/paescebu/SwiftTasksGenAI.git
-    from: 0.10.24
-  ZIPFoundation:
-    url: https://github.com/weichsel/ZIPFoundation.git
-    from: 0.9.20
+  LiteRTLM:
+    path: ../LiteRT-LM
 
 targets:
   Nooklet:
     type: application
     platform: iOS
     dependencies:
-      - package: SwiftTasksGenAI
-        product: SwiftTasksGenAI
-      - package: ZIPFoundation
+      - package: LiteRTLM
+        product: LiteRTLM
     sources:
       - path: Nooklet
       # Models/ is referenced as a folder (not compiled) so .mlmodelc bundles

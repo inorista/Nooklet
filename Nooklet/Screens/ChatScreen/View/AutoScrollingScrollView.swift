@@ -41,6 +41,7 @@ struct AutoScrollingScrollView<Content: View>: View {
                 }
                 .scrollTargetLayout()
             }
+            .scrollDismissesKeyboard(.interactively)
             .coordinateSpace(name: "scrollView")
             .scrollPosition(id: $lastViewedItemID, anchor: .bottom)
             .simultaneousGesture(DragGesture(minimumDistance: 1) // Require a small drag to trigger

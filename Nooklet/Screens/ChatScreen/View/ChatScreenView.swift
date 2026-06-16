@@ -127,6 +127,7 @@ struct ChatScreen: View {
             chatMessagesView
                 .padding(.bottom, 10)
             inputAreaView
+                .ignoresSafeArea(.keyboard, edges: .bottom)
         }
     }
 
@@ -243,6 +244,8 @@ struct ChatScreen: View {
         .sheet(isPresented: $showingCameraPicker) {
             ImagePicker(selectedImage: imageBinding, sourceType: .camera)
         }
+        .padding(.bottom, isInputFocused ? 10 : 100)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 
     private var messageTextField: some View {
