@@ -26,18 +26,18 @@ and [`proposed-plan.md`](proposed-plan.md) for the original product intent.
 xcodegen generate
 
 # 2a. Build for the simulator (shell + audio + benchmark; no real inference)
-xcodebuild -scheme NemotronASRPoC -destination 'generic/platform=iOS Simulator' build
+xcodebuild -scheme Nooklet -destination 'generic/platform=iOS Simulator' build
 
 # 2b. Or open in Xcode and run on a physical device
-open NemotronASRPoC.xcodeproj
+open Nooklet.xcodeproj
 
 # 3. Run unit tests (resampler, chunk buffer, latency tracker)
-xcodebuild test -scheme NemotronASRPoC -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+xcodebuild test -scheme Nooklet -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 
 # Run a single test
-xcodebuild test -scheme NemotronASRPoC \
+xcodebuild test -scheme Nooklet \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:NemotronASRPoCTests/AudioPipelineTests/testResamplerDownsamplesTo16k
+  -only-testing:NookletTests/AudioPipelineTests/testResamplerDownsamplesTo16k
 ```
 
 The app **runs without the model present** — it shows a "models not found" status
@@ -59,7 +59,7 @@ Cantonese has no dedicated prompt and falls back to `auto`).
 ./scripts/download_models.sh multilingual 2240
 
 # Re-inspect to refresh signatures (already checked in, but re-run if you change tier)
-python3 scripts/inspect_model.py Models/multilingual/2240ms --out NemotronASRPoC/ASR/ModelSignatures.json
+python3 scripts/inspect_model.py Models/multilingual/2240ms --out Nooklet/Services/ASR/ModelSignatures.json
 
 # Re-bundle the Models/ folder into the app
 xcodegen generate
@@ -81,7 +81,7 @@ Source: <https://huggingface.co/FluidInference/Nemotron-3.5-ASR-Streaming-Multil
 
 ### Verified model signatures (Phase 4)
 
-`NemotronASRPoC/ASR/ModelSignatures.json` is generated from the real model and
+`Nooklet/Services/ASR/ModelSignatures.json` is generated from the real model and
 consumed at runtime so no tensor names / prompt IDs are hardcoded. Highlights:
 
 - **Audio:** 16 kHz mono; preprocessor takes `audio`[1,?] (1–1,280,000 samples).
@@ -119,9 +119,9 @@ transcribes the first 60 s of the meeting clip on the iOS Simulator (CPU/GPU) at
 **RTF ≈ 0.14**. Run it with:
 
 ```bash
-xcodebuild test -scheme NemotronASRPoC \
+xcodebuild test -scheme Nooklet \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:NemotronASRPoCTests/EndToEndTranscriptionTests/testTranscribeMeetingClip
+  -only-testing:NookletTests/EndToEndTranscriptionTests/testTranscribeMeetingClip
 ```
 
 ## Architecture (current)

@@ -12,7 +12,7 @@ even on a machine that only has Python + the downloaded model.
 
 Usage:
     python3 scripts/inspect_model.py Models/multilingual/2240ms \
-        --out NemotronASRPoC/ASR/ModelSignatures.json
+        --out Nooklet/ASR/ModelSignatures.json
 """
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def inspect_module(mlmodelc: Path) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Emit ModelSignatures.json from a Nemotron CoreML dir.")
     ap.add_argument("model_dir", help="e.g. Models/multilingual/2240ms")
-    ap.add_argument("--out", default="NemotronASRPoC/ASR/ModelSignatures.json")
+    ap.add_argument("--out", default="Nooklet/ASR/ModelSignatures.json")
     args = ap.parse_args()
 
     model_dir = Path(args.model_dir)

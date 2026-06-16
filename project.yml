@@ -1,4 +1,4 @@
-name: NemotronASRPoC
+name: Nooklet
 options:
   bundleIdPrefix: ai.tokkong.nemotron
   deploymentTarget:
@@ -14,21 +14,33 @@ settings:
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad
 
+packages:
+  SwiftTasksGenAI:
+    url: https://github.com/paescebu/SwiftTasksGenAI.git
+    from: 0.10.24
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation.git
+    from: 0.9.20
+
 targets:
-  NemotronASRPoC:
+  Nooklet:
     type: application
     platform: iOS
+    dependencies:
+      - package: SwiftTasksGenAI
+        product: SwiftTasksGenAI
+      - package: ZIPFoundation
     sources:
-      - path: NemotronASRPoC
+      - path: Nooklet
       # Models/ is referenced as a folder (not compiled) so .mlmodelc bundles
       # are copied as resources when present, and the app builds without them.
       - path: Models
         type: folder
         optional: true
     info:
-      path: NemotronASRPoC/Resources/Info.plist
+      path: Nooklet/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Nemotron ASR
+        CFBundleDisplayName: Nooklet
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: "Microphone access is required to capture speech for on-device transcription."
         UIBackgroundModes:
@@ -43,26 +55,26 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_USER_SCRIPT_SANDBOXING: YES
 
-  NemotronASRPoCTests:
+  NookletTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: NemotronASRPoCTests
+      - path: NookletTests
     dependencies:
-      - target: NemotronASRPoC
+      - target: Nooklet
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.tokkong.nemotron.poc.tests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
-  NemotronASRPoC:
+  Nooklet:
     build:
       targets:
-        NemotronASRPoC: all
+        Nooklet: all
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - NemotronASRPoCTests
+        - NookletTests
