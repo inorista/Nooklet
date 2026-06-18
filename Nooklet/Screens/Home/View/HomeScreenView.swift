@@ -49,7 +49,6 @@ struct HomeScreenView: View {
                         title: "New Chat",
                         shadowColor: Color("Button"),
                         action: {
-                            // Navigate to the next screen using AppRouter!
                             router.push(.recording)
                         }
                     )

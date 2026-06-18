@@ -7,9 +7,9 @@
 
 import Combine
 import Foundation
+import SwiftData
 import SwiftUI
 import UIKit
-import SwiftData
 
 @MainActor
 class ChatViewModel: ObservableObject {
@@ -67,7 +67,6 @@ class ChatViewModel: ObservableObject {
     public var currentSession: ChatSession?
     private var needsContextInjection: Bool = false
 
-    // MARK: - Initialization
     init() {
         self.availableModels = ModelIdentifier.availableInBundle()
 
@@ -108,9 +107,8 @@ class ChatViewModel: ObservableObject {
     private func loadAndInitializeModel(identifier: ModelIdentifier) async {
         isModelLoading = true
         messages.removeAll()
-        criticalError = nil  // Clear any previous critical error
+        criticalError = nil
 
-        // Provide immediate feedback that loading has started
         messages.append(
             Message(
                 content:
@@ -152,17 +150,16 @@ class ChatViewModel: ObservableObject {
             let loadErrorMessage =
                 "Error initializing \(identifier.displayName): \(error.localizedDescription)"
             NSLog(loadErrorMessage)
-            messages.removeAll()  // Clear "Initializing..." message
+            messages.removeAll()
             messages.append(
                 Message(content: loadErrorMessage, isUserMessage: false)
             )
-            criticalError = loadErrorMessage  // Set critical error to be displayed by ContentView
+            criticalError = loadErrorMessage
         }
 
-        // Reset states after loading attempt
         isModelLoading = false
         isThinking = false
-        showStats = false  // Stats are for responses, not initial load
+        showStats = false
         clearSelectedImage()
         inputText = ""
     }
@@ -175,13 +172,20 @@ class ChatViewModel: ObservableObject {
 
     public func loadSession(_ session: ChatSession) {
         self.currentSession = session
-        
-        let sortedEntities = session.messages.sorted(by: { $0.timestamp < $1.timestamp })
+
+        let sortedEntities = session.messages.sorted(by: {
+            $0.timestamp < $1.timestamp
+        })
         self.messages = sortedEntities.map { entity in
-            Message(id: entity.id, content: entity.content, isUserMessage: entity.isUserMessage, timestamp: entity.timestamp, uiImage: entity.uiImage)
+            Message(
+                id: entity.id,
+                content: entity.content,
+                isUserMessage: entity.isUserMessage,
+                timestamp: entity.timestamp,
+                uiImage: entity.uiImage
+            )
         }
-        
-        // When switching session, reset chat context so it doesn't bleed over
+
         Task {
             try? await self.currentChat?.resetConversation()
         }
@@ -190,7 +194,9 @@ class ChatViewModel: ObservableObject {
 
     private func loadLatestSessionOrCreateNew() {
         guard let context = modelContext else { return }
-        let descriptor = FetchDescriptor<ChatSession>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
+        let descriptor = FetchDescriptor<ChatSession>(sortBy: [
+            SortDescriptor(\.updatedAt, order: .reverse)
+        ])
         if let latest = try? context.fetch(descriptor).first {
             loadSession(latest)
         } else {
@@ -205,34 +211,42 @@ class ChatViewModel: ObservableObject {
         self.currentSession = newSession
         self.messages = []
         try? context.save()
-        
+
         Task {
             try? await self.currentChat?.resetConversation()
         }
     }
 
     private func saveMessageToDatabase(_ message: Message) {
-        guard let context = modelContext, let session = currentSession else { return }
-        let entity = ChatMessage(content: message.content, isUserMessage: message.isUserMessage, imageData: message.uiImage?.jpegData(compressionQuality: 0.8))
+        guard let context = modelContext, let session = currentSession else {
+            return
+        }
+        let entity = ChatMessage(
+            content: message.content,
+            isUserMessage: message.isUserMessage,
+            imageData: message.uiImage?.jpegData(compressionQuality: 0.8)
+        )
         entity.id = message.id
         entity.timestamp = message.timestamp
         entity.session = session
         session.messages.append(entity)
         session.updatedAt = Date()
-        
+
         // Auto-generate title for new sessions based on first message
         if session.messages.count == 1 || session.title == "Chat mới" {
             let limit = min(message.content.count, 20)
-            let index = message.content.index(message.content.startIndex, offsetBy: limit)
+            let index = message.content.index(
+                message.content.startIndex,
+                offsetBy: limit
+            )
             session.title = String(message.content[..<index]) + "..."
         }
-        
+
         try? context.save()
     }
 
     // Send a message from the user to the LLM
     func sendMessage(_ text: String) {
-        // Capture the image before clearing inputText or starting the async task
         let imageToSend = selectedUIImage
 
         guard
@@ -301,36 +315,47 @@ class ChatViewModel: ObservableObject {
                 // Estimate total tokens from all messages (rough: 1 token ≈ 4 chars).
                 let totalChars = messages.reduce(0) { $0 + $1.content.count }
                 let estimatedTokens = totalChars / 4
-                let contextThreshold = 800 // Reset before hitting maxNumTokens (1024)
-                
+                let contextThreshold = 800  // Reset before hitting maxNumTokens (1024)
+
                 if estimatedTokens > contextThreshold {
-                    NSLog("Context estimated at ~\(estimatedTokens) tokens (threshold: \(contextThreshold)). Resetting conversation to keep inference fast.")
+                    NSLog(
+                        "Context estimated at ~\(estimatedTokens) tokens (threshold: \(contextThreshold)). Resetting conversation to keep inference fast."
+                    )
                     do {
                         try await chat.resetConversation()
                         NSLog("Conversation reset successfully.")
                     } catch {
-                        NSLog("Warning: Failed to reset conversation: \(error.localizedDescription)")
+                        NSLog(
+                            "Warning: Failed to reset conversation: \(error.localizedDescription)"
+                        )
                     }
                 }
 
                 // Context Injection: if this is the first message in a loaded session, inject history
                 var textToSend = text
                 if self.needsContextInjection && messages.count > 1 {
-                    let historyMsgs = messages.dropLast().suffix(4) // Last 4 messages before this new one
+                    let historyMsgs = messages.dropLast().suffix(4)  // Last 4 messages before this new one
                     if !historyMsgs.isEmpty {
-                        var historyStr = "Here is the recent conversation history for context:\n"
+                        var historyStr =
+                            "Here is the recent conversation history for context:\n"
                         for msg in historyMsgs {
                             let role = msg.isUserMessage ? "User" : "Model"
                             historyStr += "\(role): \(msg.content)\n"
                         }
-                        historyStr += "---\nPlease continue the conversation and respond to this new prompt:\n\(text)"
+                        historyStr +=
+                            "---\nPlease continue the conversation and respond to this new prompt:\n\(text)"
                         textToSend = historyStr
-                        NSLog("Injected \(historyMsgs.count) messages of history into context.")
+                        NSLog(
+                            "Injected \(historyMsgs.count) messages of history into context."
+                        )
                     }
                     self.needsContextInjection = false
                 }
 
-                let stream = try await chat.sendMessage(textToSend, imageData: imageData)
+                let stream = try await chat.sendMessage(
+                    textToSend,
+                    imageData: imageData
+                )
                 var fullResponse = ""
 
                 // Process each chunk of the response
@@ -348,7 +373,7 @@ class ChatViewModel: ObservableObject {
                         )
                     }
                 }
-                
+
                 // Save final assistant message to DB
                 if responseIndex < messages.count {
                     self.saveMessageToDatabase(messages[responseIndex])
@@ -449,7 +474,6 @@ class ChatViewModel: ObservableObject {
 
         generationTask?.cancel()  // Cancel any ongoing generation
 
-        // Clear all chat-related states before loading new model
         messages.removeAll()
         isThinking = false
         showStats = false

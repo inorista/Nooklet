@@ -13,16 +13,39 @@ class OnboardingViewModel: ObservableObject {
     @Published var onboardingItems: [OnboardingItem] = [
         OnboardingItem(
             title: "Gemma 4 is here!",
-            description: "Powered by Gemma 4. Works 100% offline.",
+            description:
+                "Powered by Gemma 4. Enjoy fast AI with no internet connection required.",
             image: "Gemma"
         ),
 
         OnboardingItem(
             title: "Speech-to-Text realtime",
-            description: "Fast, accurate voice typing via Nemotron 3.5 ASR.",
+            description:
+                "We use the Nemotron 3.5 ASR model to deliver fast and highly accurate speech recognition.",
             image: "Soundwave"
         ),
 
+        OnboardingItem(
+            title: "Nooklet",
+            description:
+                "Get started with Nooklet today!",
+            image: "Nooklet"
+        ),
+
     ]
+
+    public func onContinuePressed() {
+        if currentStep < onboardingItems.count - 1 {
+            currentStep += 1
+        } else {
+            
+        }
+    }
+
+    public func onBackPressed() {
+        if currentStep > 0 {
+            currentStep -= 1
+        }
+    }
 
 }
