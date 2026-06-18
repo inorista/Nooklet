@@ -9,6 +9,7 @@ import Combine
 import Foundation
 import SwiftUI
 import UIKit
+import SwiftData
 
 @MainActor
 class ChatViewModel: ObservableObject {
@@ -60,6 +61,11 @@ class ChatViewModel: ObservableObject {
     private var currentOnDeviceModel: OnDeviceModel?
     private var currentChat: Chat?
     private var generationTask: Task<Void, Error>?  // Task for managing LLM response generation
+
+    // MARK: - SwiftData State
+    private var modelContext: ModelContext?
+    public var currentSession: ChatSession?
+    private var needsContextInjection: Bool = false
 
     // MARK: - Initialization
     init() {
@@ -161,6 +167,69 @@ class ChatViewModel: ObservableObject {
         inputText = ""
     }
 
+    // MARK: - SwiftData Integration
+    public func setModelContext(_ context: ModelContext) {
+        self.modelContext = context
+        loadLatestSessionOrCreateNew()
+    }
+
+    public func loadSession(_ session: ChatSession) {
+        self.currentSession = session
+        
+        let sortedEntities = session.messages.sorted(by: { $0.timestamp < $1.timestamp })
+        self.messages = sortedEntities.map { entity in
+            Message(id: entity.id, content: entity.content, isUserMessage: entity.isUserMessage, timestamp: entity.timestamp, uiImage: entity.uiImage)
+        }
+        
+        // When switching session, reset chat context so it doesn't bleed over
+        Task {
+            try? await self.currentChat?.resetConversation()
+        }
+        self.needsContextInjection = true
+    }
+
+    private func loadLatestSessionOrCreateNew() {
+        guard let context = modelContext else { return }
+        let descriptor = FetchDescriptor<ChatSession>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
+        if let latest = try? context.fetch(descriptor).first {
+            loadSession(latest)
+        } else {
+            createNewSession()
+        }
+    }
+
+    public func createNewSession() {
+        guard let context = modelContext else { return }
+        let newSession = ChatSession(title: "Chat mới")
+        context.insert(newSession)
+        self.currentSession = newSession
+        self.messages = []
+        try? context.save()
+        
+        Task {
+            try? await self.currentChat?.resetConversation()
+        }
+    }
+
+    private func saveMessageToDatabase(_ message: Message) {
+        guard let context = modelContext, let session = currentSession else { return }
+        let entity = ChatMessage(content: message.content, isUserMessage: message.isUserMessage, imageData: message.uiImage?.jpegData(compressionQuality: 0.8))
+        entity.id = message.id
+        entity.timestamp = message.timestamp
+        entity.session = session
+        session.messages.append(entity)
+        session.updatedAt = Date()
+        
+        // Auto-generate title for new sessions based on first message
+        if session.messages.count == 1 || session.title == "Chat mới" {
+            let limit = min(message.content.count, 20)
+            let index = message.content.index(message.content.startIndex, offsetBy: limit)
+            session.title = String(message.content[..<index]) + "..."
+        }
+        
+        try? context.save()
+    }
+
     // Send a message from the user to the LLM
     func sendMessage(_ text: String) {
         // Capture the image before clearing inputText or starting the async task
@@ -177,6 +246,7 @@ class ChatViewModel: ObservableObject {
             uiImage: imageToSend
         )
         messages.append(userMessage)
+        saveMessageToDatabase(userMessage)
 
         // Clear input field and selected image *after* capturing them and creating the message
         inputText = ""
@@ -225,16 +295,42 @@ class ChatViewModel: ObservableObject {
                 self.lastResponseTokensPerSecond = 0.0
                 self.showStats = false  // Reset for the new response
 
-                // Add image to query if present
-                if let capturedImage = imageToSend,
-                    let cgImage = capturedImage.cgImage
-                {
-                    try chat.addImageToQuery(image: cgImage)
+                let imageData = imageToSend?.jpegData(compressionQuality: 0.8)
+
+                // Auto-reset conversation when context gets too long to prevent slow prefill.
+                // Estimate total tokens from all messages (rough: 1 token ≈ 4 chars).
+                let totalChars = messages.reduce(0) { $0 + $1.content.count }
+                let estimatedTokens = totalChars / 4
+                let contextThreshold = 800 // Reset before hitting maxNumTokens (1024)
+                
+                if estimatedTokens > contextThreshold {
+                    NSLog("Context estimated at ~\(estimatedTokens) tokens (threshold: \(contextThreshold)). Resetting conversation to keep inference fast.")
+                    do {
+                        try await chat.resetConversation()
+                        NSLog("Conversation reset successfully.")
+                    } catch {
+                        NSLog("Warning: Failed to reset conversation: \(error.localizedDescription)")
+                    }
                 }
 
-                // Get response stream from LLM
-                // Pass the text part of the message. If only an image was sent, text might be empty.
-                let stream = try await chat.sendMessage(text)
+                // Context Injection: if this is the first message in a loaded session, inject history
+                var textToSend = text
+                if self.needsContextInjection && messages.count > 1 {
+                    let historyMsgs = messages.dropLast().suffix(4) // Last 4 messages before this new one
+                    if !historyMsgs.isEmpty {
+                        var historyStr = "Here is the recent conversation history for context:\n"
+                        for msg in historyMsgs {
+                            let role = msg.isUserMessage ? "User" : "Model"
+                            historyStr += "\(role): \(msg.content)\n"
+                        }
+                        historyStr += "---\nPlease continue the conversation and respond to this new prompt:\n\(text)"
+                        textToSend = historyStr
+                        NSLog("Injected \(historyMsgs.count) messages of history into context.")
+                    }
+                    self.needsContextInjection = false
+                }
+
+                let stream = try await chat.sendMessage(textToSend, imageData: imageData)
                 var fullResponse = ""
 
                 // Process each chunk of the response
@@ -243,11 +339,19 @@ class ChatViewModel: ObservableObject {
                     fullResponse += chunk
                     // Update the placeholder message with the accumulated response
                     if responseIndex < messages.count {
+                        let existingMsg = messages[responseIndex]
                         messages[responseIndex] = Message(
+                            id: existingMsg.id,
                             content: fullResponse,
-                            isUserMessage: false
+                            isUserMessage: false,
+                            timestamp: existingMsg.timestamp
                         )
                     }
+                }
+                
+                // Save final assistant message to DB
+                if responseIndex < messages.count {
+                    self.saveMessageToDatabase(messages[responseIndex])
                 }
 
                 // Only proceed with stats calculation if not cancelled
@@ -325,52 +429,7 @@ class ChatViewModel: ObservableObject {
 
     // MARK: - Chat Management
     func clearChat() {
-        generationTask?.cancel()  // Cancel any ongoing generation
-        messages.removeAll()
-
-        // Re-initialize the chat session to clear LLM context
-        if let model = self.currentOnDeviceModel {  // Use currentOnDeviceModel
-            Task { @MainActor in
-                do {
-                    self.currentChat = try await Chat(
-                        model: model,
-                        topK: self.topK,
-                        topP: Float(self.topP),  // Cast to Float
-                        temperature: Float(self.temperature),  // Cast to Float
-                        enableVisionModality: self.enableVisionModality
-                    )
-                    messages.append(
-                        Message(
-                            content:
-                                "Chat context cleared. Ready for new conversation with \(model.identifier.displayName).",
-                            isUserMessage: false
-                        )
-                    )
-                } catch {
-                    let clearChatErrorMessage =
-                        "Error re-initializing chat session after clearing: \(error.localizedDescription)"
-                    NSLog(clearChatErrorMessage)
-                    messages.append(
-                        Message(
-                            content: clearChatErrorMessage,
-                            isUserMessage: false
-                        )
-                    )
-                }
-            }
-        } else {
-            messages.append(
-                Message(
-                    content: "Cannot clear chat: No model loaded.",
-                    isUserMessage: false
-                )
-            )
-        }
-        // Reset UI states
-        isThinking = false
-        showStats = false  // Hide stats as there's no "last response"
-        clearSelectedImage()  // Clear any selected image
-        inputText = ""  // Clear input text
+        createNewSession()
     }
 
     // MARK: - Model Switching

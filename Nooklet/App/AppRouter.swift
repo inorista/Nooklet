@@ -1,12 +1,10 @@
 import SwiftUI
 
-/// All navigable destinations in the app.
 enum Route: Hashable {
     case recording
     case settings
 }
 
-/// Centralised navigation state — injected into the environment.
 @MainActor
 @Observable
 final class AppRouter {

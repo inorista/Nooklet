@@ -11,16 +11,14 @@ import CoreGraphics // For CGImage
 
 /// Represents the available LLM models, their bundled filenames, and display names.
 public enum ModelIdentifier: String, CaseIterable, Identifiable {
-    case gemma2B = "gemma-3n-E2B-it-int4"
-    case gemma4B = "gemma-3n-E4B-it-int4"
+    case gemma2B = "gemma-4-E2B-it"
 
     public var id: String { self.rawValue }
     public var fileName: String { "\(self.rawValue).litertlm" }
 
     public var displayName: String {
         switch self {
-        case .gemma2B: return "Gemma 3N (2B)"
-        case .gemma4B: return "Gemma 3N (4B)"
+        case .gemma2B: return "Gemma 4 (2B)"
         }
     }
 
@@ -74,35 +72,77 @@ struct OnDeviceModel {
         NSLog("Bundle path: \(bundleModelPath)")
         NSLog("Cache path: \(modelCopyPath.path)")
 
-        if !fileManager.fileExists(atPath: modelCopyPath.path) {
-            NSLog("Copying model to writable Caches directory...")
-            try fileManager.copyItem(atPath: bundleModelPath, toPath: modelCopyPath.path)
-            NSLog("Model copied successfully.")
-        } else {
-            NSLog("Model already exists in Caches directory.")
+        // Delete stale cached model + xnnpack_cache when maxNumTokens changes
+        // so the engine rebuilds with the correct KV cache dimensions.
+        let xnnCachePath = modelDir.appendingPathComponent("\(modelIdentifier.rawValue).litertlm.xnnpack_cache")
+        if fileManager.fileExists(atPath: xnnCachePath.path) {
+            try? fileManager.removeItem(at: xnnCachePath)
+            NSLog("Removed stale xnnpack_cache.")
         }
+        if fileManager.fileExists(atPath: modelCopyPath.path) {
+            try? fileManager.removeItem(at: modelCopyPath)
+            NSLog("Removed stale cached model to force fresh copy.")
+        }
+
+        NSLog("Copying model to writable Caches directory...")
+        try fileManager.copyItem(atPath: bundleModelPath, toPath: modelCopyPath.path)
+        NSLog("Model copied successfully.")
 
         // Initialize the Engine config.
         // Backend: .gpu (Metal) on physical iOS devices, or .cpu() as fallback.
+        // maxNumTokens: 1024 is the safe limit for Gemma 2B on iOS GPU.
+        // Higher values (e.g. 2048) cause DYNAMIC_UPDATE_SLICE failures because the
+        // KV-cache tensors exceed the device's GPU memory budget.
+        let maxTokens = 1024
+
         #if targetEnvironment(simulator)
-        let backend = Backend.cpu()
+        let preferredBackend = Backend.cpu()
         #else
-        let backend = Backend.gpu
+        let preferredBackend = Backend.gpu
         #endif
 
-        let config = try EngineConfig(
-            modelPath: modelCopyPath.path,
-            backend: backend,
-            maxNumTokens: 256, // Minimal KV cache to reduce memory pressure
-            cacheDir: modelDir.path
-        )
-
-        let engine = Engine(engineConfig: config)
-        
+        var engine: Engine
         let startTime = CFAbsoluteTimeGetCurrent()
-        try await engine.initialize()
+
+        do {
+            // Try preferred backend first (GPU on device, CPU on simulator).
+            // visionBackend uses CPU because the vision model's STABLEHLO_COMPOSITE
+            // ops aren't supported on the device GPU. Using nil would skip the
+            // vision executor entirely, breaking image-based prompts.
+            let config = try EngineConfig(
+                modelPath: modelCopyPath.path,
+                backend: preferredBackend,
+                visionBackend: .cpu(),
+                maxNumTokens: maxTokens,
+                cacheDir: modelDir.path
+            )
+            engine = Engine(engineConfig: config)
+            try await engine.initialize()
+            NSLog("Engine initialized with preferred backend (vision on CPU).")
+        } catch {
+            #if !targetEnvironment(simulator)
+            // GPU allocation failed — fall back to CPU so the app remains usable.
+            NSLog("GPU backend failed (\(error.localizedDescription)). Falling back to CPU.")
+            // Remove stale xnnpack cache before CPU retry
+            let xnnCacheRetry = modelDir.appendingPathComponent("\(modelIdentifier.rawValue).litertlm.xnnpack_cache")
+            try? fileManager.removeItem(at: xnnCacheRetry)
+
+            let cpuConfig = try EngineConfig(
+                modelPath: modelCopyPath.path,
+                backend: Backend.cpu(),
+                visionBackend: .cpu(),
+                maxNumTokens: maxTokens,
+                cacheDir: modelDir.path
+            )
+            engine = Engine(engineConfig: cpuConfig)
+            try await engine.initialize()
+            NSLog("Engine initialized with CPU fallback backend.")
+            #else
+            throw error
+            #endif
+        }
+
         let duration = CFAbsoluteTimeGetCurrent() - startTime
-        
         metrics.initializationTimeInSeconds = duration
         NSLog("Engine initialized in \(String(format: "%.2f", duration)) seconds.")
 
@@ -115,6 +155,7 @@ struct OnDeviceModel {
 final class Chat {
     private let model: OnDeviceModel
     private var conversation: Conversation
+    private let conversationConfig: ConversationConfig
     private var lastGenerationTime: TimeInterval = 0.0
 
     init(model: OnDeviceModel, topK: Int = 40, topP: Float = 0.9, temperature: Float = 0.9, enableVisionModality: Bool = true) async throws {
@@ -129,6 +170,7 @@ final class Chat {
         let config = ConversationConfig(
             samplerConfig: samplerConfig
         )
+        self.conversationConfig = config
 
         self.conversation = try await model.engine.createConversation(with: config)
     }
@@ -140,15 +182,28 @@ final class Chat {
         return response.toString
     }
 
-    public func addImageToQuery(image: CGImage) throws {
-        // Multi-modality disabled to save memory / CPU load on iOS for now
-        NSLog("Warning: Vision modality is not supported yet in LiteRTLM wrapper.")
+    /// Resets the conversation to clear accumulated context, keeping the same engine and sampler config.
+    func resetConversation() async throws {
+        self.conversation = try await model.engine.createConversation(with: conversationConfig)
+        NSLog("Chat conversation has been reset.")
     }
 
-    func sendMessage(_ text: String) async throws -> AsyncThrowingStream<String, any Error> {
+    func sendMessage(_ text: String, imageData: Data? = nil) async throws -> AsyncThrowingStream<String, any Error> {
         let startTime = CFAbsoluteTimeGetCurrent()
         
-        let messageStream = conversation.sendMessageStream(LiteRTLM.Message(text))
+        var contents: [LiteRTLM.Content] = []
+        if let data = imageData {
+            contents.append(.imageData(data))
+        }
+        if !text.isEmpty {
+            contents.append(.text(text))
+        } else if contents.isEmpty {
+            // Provide empty text if both are empty just to avoid empty message error
+            contents.append(.text(""))
+        }
+        
+        let message = LiteRTLM.Message(contents: contents, role: .user)
+        let messageStream = conversation.sendMessageStream(message)
         
         return AsyncThrowingStream { continuation in
             Task {

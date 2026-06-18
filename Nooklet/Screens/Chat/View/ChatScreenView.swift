@@ -15,6 +15,9 @@ struct ChatScreen: View {
     @State private var presentingPhotosPicker = false
     @State private var showingCameraPicker = false
     @State private var showingSettingsSheet = false
+    @State private var showingHistorySheet = false
+    
+    @Environment(\.modelContext) private var modelContext
 
     private var imageBinding: Binding<UIImage?> {
         Binding(
@@ -50,6 +53,14 @@ struct ChatScreen: View {
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarLeading) {
                 HStack(alignment: .center, spacing: 4) {
+                    Button {
+                        showingHistorySheet = true
+                    } label: {
+                        Image(systemName: "line.3.horizontal")
+                            .imageScale(.medium)
+                    }
+                    .disabled(viewModel.isModelLoading)
+                    
                     Picker("Model", selection: $viewModel.selectedModelIdentifier) {
                         ForEach(viewModel.availableModels) { modelId in
                             Text(modelId.displayName).tag(modelId)
@@ -77,6 +88,9 @@ struct ChatScreen: View {
             }
         }
         .onAppear {
+            if viewModel.currentSession == nil {
+                viewModel.setModelContext(modelContext)
+            }
         }
         .onChange(of: viewModel.selectedModelIdentifier) { _, _ in
             Task {
@@ -114,6 +128,9 @@ struct ChatScreen: View {
         )
         .sheet(isPresented: $showingSettingsSheet) {
             InferenceSettingsView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showingHistorySheet) {
+            ChatHistoryView(viewModel: viewModel)
         }
     }
 

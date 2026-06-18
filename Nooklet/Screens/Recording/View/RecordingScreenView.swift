@@ -52,7 +52,6 @@ struct RecordingScreen: View {
         // Make navigation bar transparent to let ambient background show through
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .preferredColorScheme(.dark)
         .onAppear {
             viewModel.onAppear()
         }

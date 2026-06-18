@@ -8,13 +8,13 @@ import Foundation
 
 enum AppTab: String, MorphingTabBarProtocol {
     case home = "Home"
-    case search = "Chat"
+    case chat = "Chat"
     case setting = "Setting"
 
     var symbolImage: String {
         return switch self {
         case .home: "house.fill"
-        case .search: "magnifyingglass"
+        case .chat: "magnifyingglass"
         case .setting: "gear"
         }
     }
