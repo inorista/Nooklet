@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 @MainActor
 class OnboardingViewModel: ObservableObject {
@@ -34,11 +35,14 @@ class OnboardingViewModel: ObservableObject {
 
     ]
 
-    public func onContinuePressed() {
+    /// Called when "Continue" / "Get Started" is pressed.
+    /// Returns `true` when the user has finished onboarding (tapped "Get Started").
+    public func onContinuePressed() -> Bool {
         if currentStep < onboardingItems.count - 1 {
             currentStep += 1
+            return false
         } else {
-            
+            return true
         }
     }
 

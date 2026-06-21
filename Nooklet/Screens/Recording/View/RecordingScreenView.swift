@@ -29,34 +29,37 @@ struct RecordingScreen: View {
                 Spacer()
 
                 // Centered voice orb
-                VoiceOrbView(
-                    audioLevel: viewModel.audioLevel,
-                    isRecording: viewModel.isRecording,
-                    elapsedText: viewModel.elapsedFormatted,
-                    onTap: {
-                        Task { await viewModel.toggleRecording() }
-                    }
-                )
+//                VoiceOrbView(
+//                    audioLevel: viewModel.audioLevel,
+//                    isRecording: viewModel.isRecording,
+//                    elapsedText: viewModel.elapsedFormatted,
+//                    onTap: {
+//                        Task { await viewModel.toggleRecording() }
+//                    }
+//                )
 
                 Spacer()
 
                 // Transcript area — bottom
                 TranscriptView(
-                    partial: viewModel.partialTranscript, final: viewModel.finalTranscript
+                    partial: viewModel.partialTranscript,
+                    final: viewModel.finalTranscript
                 )
             }
-            .padding(.bottom, 90) // Increased to accommodate the MorphingTabBar
+            .padding(.bottom, 90)  // Increased to accommodate the MorphingTabBar
         }
-        .navigationTitle("Nooklet")
-        .navigationBarTitleDisplayMode(.inline)
-        // Make navigation bar transparent to let ambient background show through
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+
         .onAppear {
             viewModel.onAppear()
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.isRecording)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.partialTranscript.isEmpty)
+        .animation(
+            .spring(response: 0.4, dampingFraction: 0.8),
+            value: viewModel.isRecording
+        )
+        .animation(
+            .spring(response: 0.4, dampingFraction: 0.8),
+            value: viewModel.partialTranscript.isEmpty
+        )
     }
 
     // MARK: - Ambient Background
@@ -77,7 +80,7 @@ struct RecordingScreen: View {
                 .frame(width: 350, height: 350)
                 .blur(radius: 100)
                 .offset(x: 200, y: 300)
-                
+
             Circle()
                 .fill(Color(red: 0.4, green: 0.1, blue: 0.3).opacity(0.2))
                 .frame(width: 300, height: 300)
@@ -120,7 +123,10 @@ struct RecordingScreen: View {
                 Capsule()
                     .stroke(
                         LinearGradient(
-                            colors: [.white.opacity(0.3), .clear, .white.opacity(0.1)],
+                            colors: [
+                                .white.opacity(0.3), .clear,
+                                .white.opacity(0.1),
+                            ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
@@ -152,7 +158,7 @@ struct RecordingScreen: View {
                     Divider()
                         .background(.white.opacity(0.2))
                 }
-                
+
                 ScrollView {
                     Text(viewModel.finalTranscript)
                         .font(.body.weight(.regular))
@@ -161,6 +167,7 @@ struct RecordingScreen: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)
                 }
+                .applyScrollEdgeEffectStyle()
                 .frame(maxHeight: 180)
             }
         }
@@ -173,7 +180,9 @@ struct RecordingScreen: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(
                     LinearGradient(
-                        colors: [.white.opacity(0.4), .white.opacity(0.05), .clear],
+                        colors: [
+                            .white.opacity(0.4), .white.opacity(0.05), .clear,
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),

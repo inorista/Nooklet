@@ -25,7 +25,7 @@ struct CustomButton: View {
         shadowColor: Color? = nil,
         buttonWidth: CGFloat? = nil,
         fontSize: CGFloat? = nil,
-        action: @escaping () -> Void
+        action: @escaping () -> Void,
     ) {
         self.buttonColor = buttonColor
         self.title = title
@@ -51,6 +51,6 @@ struct CustomButton: View {
         .buttonStyle(.borderedProminent)
         .tint(buttonColor)
         .shadow(color: shadowColor ?? .clear, radius: 4, x: 0, y: 0)
-        .cornerRadius(self.cornerRadius ?? 12, corners: .allCorners)
+        .cornerRadius(self.cornerRadius ?? 12)
     }
 }

@@ -7,7 +7,7 @@
 
 import Combine
 import Foundation
-import SwiftData
+import RealmSwift
 import SwiftUI
 import UIKit
 
@@ -18,15 +18,11 @@ class ChatViewModel: ObservableObject {
     @Published var isModelLoading: Bool = true
     @Published var isThinking: Bool = false
 
-    @Published var modelInitializationTime: Double = 0.0
-    @Published var lastResponseTokenCount: Int = 0
-    @Published var lastResponseLibraryTime: Double = 0.0  // For library's responseGenerationTimeInSeconds
-    @Published var lastResponseTokensPerSecond: Double = 0.0  // Will use libraryTime for this
-    @Published var showStats: Bool = false  // To control visibility of the "Last Response" section
     @Published var selectedUIImage: UIImage?
+
     /// Stores a critical error message if model initialization fails
     @Published public var criticalError: String?
-    @Published public var isApplyingSettings: Bool = false  // For disabling UI during settings application
+    @Published public var isApplyingSettings: Bool = false
 
     // MARK: - Model Switching State
     /// List of models found in the app bundle.
@@ -45,59 +41,45 @@ class ChatViewModel: ObservableObject {
         set { selectedModelIdentifierRawValue = newValue.rawValue }
     }
 
-    // MARK: - Inference Settings (Session Options)
-    @AppStorage("inferenceTopK_v1") public var topK: Int = 40
-    @AppStorage("inferenceTopP_v1") public var topP: Double = 0.9  // Store as Double
-    @AppStorage("inferenceTemperature_v1") public var temperature: Double =
-        0.9  // Store as Double
-    @AppStorage("inferenceEnableVisionModality_v1") public
-        var enableVisionModality: Bool = true
-
-    // MARK: - UI Settings
-    @AppStorage("uiIsAutoScrollEnabled_v1") public var isAutoScrollEnabled:
-        Bool = true
-
-    // MARK: - Private LLM State
     private var currentOnDeviceModel: OnDeviceModel?
     private var currentChat: Chat?
-    private var generationTask: Task<Void, Error>?  // Task for managing LLM response generation
+    private var generationTask: Task<Void, Error>?
 
-    // MARK: - SwiftData State
-    private var modelContext: ModelContext?
+    // MARK: - Realm State
     public var currentSession: ChatSession?
     private var needsContextInjection: Bool = false
 
     init() {
-        self.availableModels = ModelIdentifier.availableInBundle()
-
-        if availableModels.isEmpty {
-            let noModelsErrorMessage =
-                "Critical Error: No LLM models found in the app bundle. Please ensure model files (e.g., *.task) are correctly added to the project."
-            NSLog(noModelsErrorMessage)
-            criticalError = noModelsErrorMessage
-            isModelLoading = false
-            return
-        }
-
-        var initialModelToLoad = ModelIdentifier.gemma2B  // Default desired model
-
-        // Determine the actual initial model based on availability and preference
-        let preferredModelFromStorage = ModelIdentifier(
-            rawValue: selectedModelIdentifierRawValue
-        )
-        if let prefModel = preferredModelFromStorage,
-            availableModels.contains(prefModel)
-        {
-            initialModelToLoad = prefModel
-        } else if availableModels.contains(.gemma2B) {
-            initialModelToLoad = .gemma2B
-        } else if let firstAvailable = availableModels.first {
-            initialModelToLoad = firstAvailable
-        }
-
-        self.selectedModelIdentifier = initialModelToLoad
-
         Task {
+            self.availableModels = ModelIdentifier.availableInBundle()
+
+            if availableModels.isEmpty {
+                let noModelsErrorMessage =
+                    "Critical Error: No LLM models found in the app bundle. Please ensure model files (e.g., *.task) are correctly added to the project."
+                NSLog(noModelsErrorMessage)
+                criticalError = noModelsErrorMessage
+                isModelLoading = false
+                return
+            }
+
+            var initialModelToLoad = ModelIdentifier.gemma2B
+
+            // Determine the actual initial model based on availability and preference
+            let preferredModelFromStorage = ModelIdentifier(
+                rawValue: selectedModelIdentifierRawValue
+            )
+            if let prefModel = preferredModelFromStorage,
+                availableModels.contains(prefModel)
+            {
+                initialModelToLoad = prefModel
+            } else if availableModels.contains(.gemma2B) {
+                initialModelToLoad = .gemma2B
+            } else if let firstAvailable = availableModels.first {
+                initialModelToLoad = firstAvailable
+            }
+
+            self.selectedModelIdentifier = initialModelToLoad
+
             await loadAndInitializeModel(identifier: initialModelToLoad)
         }
     }
@@ -124,10 +106,9 @@ class ChatViewModel: ObservableObject {
             )
             currentChat = try await Chat(
                 model: currentOnDeviceModel!,
-                topK: self.topK,
-                topP: Float(self.topP),  // Cast to Float
-                temperature: Float(self.temperature),  // Cast to Float
-                enableVisionModality: self.enableVisionModality
+                topK: 64,
+                topP: 0.95,
+                temperature: 1.0,
             )
 
             messages.removeAll()  // Clear "Initializing..." message
@@ -139,13 +120,6 @@ class ChatViewModel: ObservableObject {
                 )
             )
 
-            if let modelMetrics = self.currentOnDeviceModel?.inference.metrics {
-                self.modelInitializationTime =
-                    modelMetrics.initializationTimeInSeconds
-                NSLog(
-                    "\(identifier.displayName) initialization time: \(self.modelInitializationTime)s"
-                )
-            }
         } catch {
             let loadErrorMessage =
                 "Error initializing \(identifier.displayName): \(error.localizedDescription)"
@@ -159,14 +133,12 @@ class ChatViewModel: ObservableObject {
 
         isModelLoading = false
         isThinking = false
-        showStats = false
         clearSelectedImage()
         inputText = ""
     }
 
-    // MARK: - SwiftData Integration
-    public func setModelContext(_ context: ModelContext) {
-        self.modelContext = context
+    // MARK: - Realm Integration
+    public func loadInitialData() {
         loadLatestSessionOrCreateNew()
     }
 
@@ -193,56 +165,48 @@ class ChatViewModel: ObservableObject {
     }
 
     private func loadLatestSessionOrCreateNew() {
-        guard let context = modelContext else { return }
-        let descriptor = FetchDescriptor<ChatSession>(sortBy: [
-            SortDescriptor(\.updatedAt, order: .reverse)
-        ])
-        if let latest = try? context.fetch(descriptor).first {
-            loadSession(latest)
-        } else {
+        do {
+            if let latest = try RealmService.shared.getLatestChatSession() {
+                loadSession(latest)
+            } else {
+                createNewSession()
+            }
+        } catch {
+            print("Error initializing Realm: \(error)")
             createNewSession()
         }
     }
 
     public func createNewSession() {
-        guard let context = modelContext else { return }
-        let newSession = ChatSession(title: "Chat mới")
-        context.insert(newSession)
-        self.currentSession = newSession
-        self.messages = []
-        try? context.save()
+        do {
+            let newSession = try RealmService.shared.createNewChatSession()
+            self.currentSession = newSession
+            self.messages = []
 
-        Task {
-            try? await self.currentChat?.resetConversation()
+            Task {
+                try? await self.currentChat?.resetConversation()
+            }
+        } catch {
+            print("Error creating new session: \(error)")
         }
     }
 
     private func saveMessageToDatabase(_ message: Message) {
-        guard let context = modelContext, let session = currentSession else {
-            return
-        }
-        let entity = ChatMessage(
-            content: message.content,
-            isUserMessage: message.isUserMessage,
-            imageData: message.uiImage?.jpegData(compressionQuality: 0.8)
-        )
-        entity.id = message.id
-        entity.timestamp = message.timestamp
-        entity.session = session
-        session.messages.append(entity)
-        session.updatedAt = Date()
+        guard let session = currentSession else { return }
 
-        // Auto-generate title for new sessions based on first message
-        if session.messages.count == 1 || session.title == "Chat mới" {
-            let limit = min(message.content.count, 20)
-            let index = message.content.index(
-                message.content.startIndex,
-                offsetBy: limit
+        do {
+            let entity = ChatMessage(
+                content: message.content,
+                isUserMessage: message.isUserMessage,
+                imageData: message.uiImage?.jpegData(compressionQuality: 0.8)
             )
-            session.title = String(message.content[..<index]) + "..."
-        }
+            entity.id = message.id
+            entity.timestamp = message.timestamp
 
-        try? context.save()
+            try RealmService.shared.saveMessage(entity, to: session)
+        } catch {
+            print("Error saving message: \(error)")
+        }
     }
 
     // Send a message from the user to the LLM
@@ -304,10 +268,6 @@ class ChatViewModel: ObservableObject {
                 isThinking = true
 
                 // Reset response-specific stats
-                self.lastResponseTokenCount = 0
-                self.lastResponseLibraryTime = 0.0
-                self.lastResponseTokensPerSecond = 0.0
-                self.showStats = false  // Reset for the new response
 
                 let imageData = imageToSend?.jpegData(compressionQuality: 0.8)
 
@@ -382,47 +342,8 @@ class ChatViewModel: ObservableObject {
                 // Only proceed with stats calculation if not cancelled
                 try Task.checkCancellation()
 
-                if let chat = self.currentChat {  // Use currentChat
-                    if !fullResponse.isEmpty {
-                        do {
-                            self.lastResponseTokenCount = try chat.sizeInTokens(
-                                text: fullResponse
-                            )
-                        } catch {
-                            print(
-                                "Error getting token count: \(error.localizedDescription)"
-                            )
-                            self.lastResponseTokenCount = 0
-                        }
-                    }
-                    // Get the library's reported generation time
-                    if let libraryTime = chat.getLastResponseGenerationTime() {
-                        self.lastResponseLibraryTime = libraryTime
-                    } else {
-                        self.lastResponseLibraryTime = 0  // Or handle error/nil case
-                    }
-                } else {
-                    // Ensure values are zeroed if chat is not available
-                    self.lastResponseTokenCount = 0
-                    self.lastResponseLibraryTime = 0
-                }
-
-                // Calculate Tokens/sec using the library's reported time
-                if self.lastResponseLibraryTime > 0
-                    && self.lastResponseTokenCount > 0
-                {
-                    self.lastResponseTokensPerSecond =
-                        Double(self.lastResponseTokenCount)
-                        / self.lastResponseLibraryTime
-                } else {
-                    self.lastResponseTokensPerSecond = 0.0
-                }
-                self.showStats = true  // Make the "Last Response" stats section visible
             } catch is CancellationError {
                 NSLog("Generation was cancelled.")
-                // Message will remain as it was when stopped.
-                // isThinking is handled by the defer block.
-                self.showStats = false
             } catch {
                 let sendMessageError =
                     "Error during message processing: \(error.localizedDescription)"
@@ -430,8 +351,6 @@ class ChatViewModel: ObservableObject {
                 messages.append(
                     Message(content: sendMessageError, isUserMessage: false)
                 )
-                // isThinking is handled by the defer block
-                self.showStats = false  // Ensure stats are not shown on error
             }
         }
     }
@@ -476,11 +395,7 @@ class ChatViewModel: ObservableObject {
 
         messages.removeAll()
         isThinking = false
-        showStats = false
-        modelInitializationTime = 0.0  // Reset this as a new model is loading
-        lastResponseTokenCount = 0
-        lastResponseLibraryTime = 0.0
-        lastResponseTokensPerSecond = 0.0
+
         clearSelectedImage()
         inputText = ""
 
@@ -499,7 +414,6 @@ class ChatViewModel: ObservableObject {
         generationTask?.cancel()  // Cancel any ongoing generation
         messages.removeAll()
         isThinking = false
-        showStats = false
         clearSelectedImage()
         inputText = ""
 
@@ -517,10 +431,9 @@ class ChatViewModel: ObservableObject {
             do {
                 self.currentChat = try await Chat(
                     model: model,
-                    topK: self.topK,
-                    topP: Float(self.topP),  // Cast to Float
-                    temperature: Float(self.temperature),  // Cast to Float
-                    enableVisionModality: self.enableVisionModality
+                    topK: 64,
+                    topP: 0.95,
+                    temperature: 1.0,
                 )
                 self.isApplyingSettings = false
                 messages.append(
@@ -530,9 +443,7 @@ class ChatViewModel: ObservableObject {
                         isUserMessage: false
                     )
                 )
-                NSLog(
-                    "Inference settings applied. topK: \(self.topK), topP: \(self.topP), temp: \(self.temperature), vision: \(self.enableVisionModality)"
-                )
+
             } catch {
                 self.isApplyingSettings = false
                 let applySettingsErrorMessage =
@@ -546,20 +457,5 @@ class ChatViewModel: ObservableObject {
                 )
             }
         }
-    }
-
-    public func resetInferenceAndUISettingsToDefaults() {
-        NSLog("Resetting all settings to defaults.")
-        // Reset inference settings
-        topK = 40
-        topP = 0.9
-        temperature = 0.9
-        enableVisionModality = true
-
-        // Reset UI settings
-        isAutoScrollEnabled = true
-
-        applyInferenceSettingsAndReinitializeChat()
-
     }
 }

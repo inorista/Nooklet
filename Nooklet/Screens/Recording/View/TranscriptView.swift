@@ -46,6 +46,7 @@ struct TranscriptView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
             }
+            .applyScrollEdgeEffectStyle()
             .frame(maxHeight: maxHeight)
         }
     }

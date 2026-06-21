@@ -7,7 +7,8 @@
 import SwiftUI
 
 struct OnboardingScreenView: View {
-    @ObservedObject private var viewModel = OnboardingViewModel()
+    @EnvironmentObject private var coordinator: AppCoordinator
+    @ObservedObject var viewModel: OnboardingViewModel
 
     var animation: Animation {
         .interpolatingSpring(duration: 0.65, bounce: 0, initialVelocity: 0)
@@ -172,7 +173,10 @@ struct OnboardingScreenView: View {
                 shadowColor: Color(.button),
                 action: {
                     withAnimation(animation) {
-                        viewModel.onContinuePressed()
+                        let finished = viewModel.onContinuePressed()
+                        if finished {
+                            coordinator.onOnboardingCompleted()
+                        }
                     }
                 }
             )

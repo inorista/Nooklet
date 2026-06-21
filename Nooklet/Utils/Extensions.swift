@@ -7,9 +7,109 @@
 
 import SwiftUI
 
+extension View {
+    @ViewBuilder
+    func applyScrollEdgeEffectStyle() -> some View {
+        if #available(iOS 26.0, *) {
+            self.scrollEdgeEffectStyle(.automatic, for: .all)
+        } else {
+            self
+        }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func borderBeam(
+        border: Color,
+        hideFadeBorder: Bool = true,
+        beam: [Color],
+        beamBlur: CGFloat,
+        cornerRadius: CGFloat,
+        isEnabled: Bool = true
+    ) -> some View {
+        self
+            .modifier(
+                BorderBeamEffect(
+                    border: border,
+                    hideFadeBorder: hideFadeBorder,
+                    beam: beam,
+                    beamBlur: beamBlur,
+                    cornerRadius: cornerRadius,
+                    isEnabled: isEnabled
+                )
+            )
+    }
+}
+
+struct BorderBeamEffect: ViewModifier {
+    var border: Color
+    var hideFadeBorder: Bool
+    var beam: [Color]
+    var beamBlur: CGFloat
+    var cornerRadius: CGFloat
+    var isEnabled: Bool
+    func body(content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+
+                    if !hideFadeBorder {
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .stroke(border.tertiary, lineWidth: 0.6)
+                    }
+
+                    //USING KEYFRAME
+                    if isEnabled {
+                        KeyframeAnimator(initialValue: 0.0, repeating: true) {
+                            value in
+                            let rotation = value * 360
+                            let borderGradient = AngularGradient(
+                                colors: [.clear, border, .clear],
+                                center: .center,
+                                startAngle: .degrees(140 + rotation),
+                                endAngle: .degrees(270 + rotation)
+                            )
+
+                            let beamGradient = LinearGradient(
+                                colors: beam,
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+
+                            RoundedRectangle(cornerRadius: cornerRadius)
+                                .fill(beamGradient)
+                                .mask {
+                                    Rectangle()
+                                        .overlay {
+                                            Rectangle()
+                                                .blur(radius: beamBlur)
+                                                .blendMode(.destinationOut)
+                                        }
+                                }
+                                .mask {
+                                    RoundedRectangle(cornerRadius: cornerRadius)
+                                        .fill(borderGradient)
+                                        .blur(radius: beamBlur / 1.5)
+                                        .padding(-beamBlur * 2)
+                                }
+
+                            RoundedRectangle(cornerRadius: cornerRadius)
+                                .stroke(borderGradient, lineWidth: 0.6)
+                        } keyframes: { _ in
+                            LinearKeyframe(1, duration: 2.5)
+                        }
+                    }
+
+                }
+            }
+    }
+}
 extension Color {
     init(hex string: String) {
-        var string: String = string.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        var string: String = string.trimmingCharacters(
+            in: CharacterSet.whitespacesAndNewlines
+        )
         if string.hasPrefix("#") {
             _ = string.removeFirst()
         }
@@ -63,7 +163,7 @@ extension Color {
             self.init(.sRGB, red: red, green: green, blue: blue, opacity: 1)
 
         } else if string.count == 8 {
-            let mask = 0x000000FF
+            let mask = 0x0000_00FF
             let r = Int(color >> 24) & mask
             let g = Int(color >> 16) & mask
             let b = Int(color >> 8) & mask

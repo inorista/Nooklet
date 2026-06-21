@@ -1,21 +1,21 @@
 import Foundation
-import SwiftData
+import RealmSwift
 import SwiftUI
 
-@Model
-class ChatMessage {
-    var id: UUID = UUID()
-    var content: String = ""
-    var isUserMessage: Bool = true
-    var timestamp: Date = Date()
+class ChatMessage: Object, ObjectKeyIdentifiable {
+    @Persisted(primaryKey: true) var id: UUID = UUID()
+    @Persisted var content: String = ""
+    @Persisted var isUserMessage: Bool = true
+    @Persisted var timestamp: Date = Date()
     
-    // CoreData/SwiftData handles Data natively. We store the UIImage as Data (PNG or JPEG)
-    var imageData: Data?
+    // CoreData/SwiftData/Realm handles Data natively. We store the UIImage as Data (PNG or JPEG)
+    @Persisted var imageData: Data?
     
     // Reference back to session
-    var session: ChatSession?
+    @Persisted(originProperty: "messages") var session: LinkingObjects<ChatSession>
     
-    init(content: String, isUserMessage: Bool, imageData: Data? = nil) {
+    convenience init(content: String, isUserMessage: Bool, imageData: Data? = nil) {
+        self.init()
         self.id = UUID()
         self.content = content
         self.isUserMessage = isUserMessage

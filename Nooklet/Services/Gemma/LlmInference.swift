@@ -158,7 +158,7 @@ final class Chat {
     private let conversationConfig: ConversationConfig
     private var lastGenerationTime: TimeInterval = 0.0
 
-    init(model: OnDeviceModel, topK: Int = 40, topP: Float = 0.9, temperature: Float = 0.9, enableVisionModality: Bool = true) async throws {
+    init(model: OnDeviceModel, topK: Int = 64, topP: Float = 0.95, temperature: Float = 1.0) async throws {
         self.model = model
 
         let samplerConfig = try SamplerConfig(

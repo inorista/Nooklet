@@ -1,17 +1,16 @@
 import Foundation
-import SwiftData
+import RealmSwift
 
-@Model
-class ChatSession {
-    var id: UUID = UUID()
-    var title: String = "Chat mới"
-    var createdAt: Date = Date()
-    var updatedAt: Date = Date()
+class ChatSession: Object, ObjectKeyIdentifiable {
+    @Persisted(primaryKey: true) var id: UUID = UUID()
+    @Persisted var title: String = "Chat mới"
+    @Persisted var createdAt: Date = Date()
+    @Persisted var updatedAt: Date = Date()
     
-    @Relationship(deleteRule: .cascade) 
-    var messages: [ChatMessage] = []
+    @Persisted var messages: List<ChatMessage>
     
-    init(title: String = "Chat mới") {
+    convenience init(title: String = "Chat mới") {
+        self.init()
         self.id = UUID()
         self.title = title
         self.createdAt = Date()
