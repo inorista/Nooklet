@@ -1,37 +1,37 @@
 import Foundation
 import RealmSwift
 
-
-
 class RealmService {
     static let shared = RealmService()
 
     private init() {}
 
-
-    func saveUser(_ user: User) throws {
+    func saveUser(_ user: UserEntity) throws {
         let realm = try Realm()
         try realm.write {
             realm.add(user)
         }
     }
 
-    func getUser() throws -> User? {
+    func getUser() throws -> UserEntity? {
         let realm = try Realm()
-        return realm.objects(User.self).first
+        let user = realm.objects(UserEntity.self).first
+        return user
     }
 
-
-    func createNewChatSession() throws -> ChatSession {
+    func createNewChatSession() throws -> ChatSessionEntity {
         let realm = try Realm()
-        let newSession = ChatSession()
+        let newSession = ChatSessionEntity()
         try realm.write {
             realm.add(newSession)
         }
         return newSession
     }
 
-    func saveMessage(_ message: ChatMessage, to session: ChatSession) throws {
+    func saveMessage(
+        _ message: ChatMessageEntity,
+        to session: ChatSessionEntity
+    ) throws {
         let realm = try Realm()
         try realm.write {
             session.messages.append(message)
@@ -48,11 +48,23 @@ class RealmService {
         }
     }
 
-    func getLatestChatSession() throws -> ChatSession? {
+    func getChatSessions(_ prefix: Int?) throws -> [ChatSessionEntity] {
         let realm = try Realm()
-        return realm.objects(ChatSession.self).sorted(
-            byKeyPath: "updatedAt",
-            ascending: false
-        ).first
+        let chatSessions = realm.objects(ChatSessionEntity.self).sorted(
+            by: \.updatedAt,
+            ascending: true
+        )
+        var result: [ChatSessionEntity] = []
+        if prefix != nil {
+            result = Array((chatSessions.prefix(prefix!)))
+        } else {
+            result = Array(chatSessions)
+        }
+        return result
+    }
+
+    func getChatSession(by id: UUID) async throws -> ChatSessionEntity? {
+        let realm = try await Realm()
+        return realm.object(ofType: ChatSessionEntity.self, forPrimaryKey: id)
     }
 }

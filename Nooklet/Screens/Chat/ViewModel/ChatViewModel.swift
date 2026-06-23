@@ -13,7 +13,7 @@ import UIKit
 
 @MainActor
 class ChatViewModel: ObservableObject {
-    @Published var messages: [Message] = []
+    @Published var messages: [ChatMessage] = []
     @Published var inputText: String = ""
     @Published var isModelLoading: Bool = true
     @Published var isThinking: Bool = false
@@ -46,7 +46,7 @@ class ChatViewModel: ObservableObject {
     private var generationTask: Task<Void, Error>?
 
     // MARK: - Realm State
-    public var currentSession: ChatSession?
+    public var currentSession: ChatSessionEntity?
     private var needsContextInjection: Bool = false
 
     init() {
@@ -92,7 +92,7 @@ class ChatViewModel: ObservableObject {
         criticalError = nil
 
         messages.append(
-            Message(
+            ChatMessage(
                 content:
                     "Initializing \(identifier.displayName)... Please wait.",
                 isUserMessage: false
@@ -111,9 +111,9 @@ class ChatViewModel: ObservableObject {
                 temperature: 1.0,
             )
 
-            messages.removeAll()  // Clear "Initializing..." message
+            messages.removeAll()
             messages.append(
-                Message(
+                ChatMessage(
                     content:
                         "Model \(identifier.displayName) loaded. Hello! How can I help?",
                     isUserMessage: false
@@ -126,7 +126,7 @@ class ChatViewModel: ObservableObject {
             NSLog(loadErrorMessage)
             messages.removeAll()
             messages.append(
-                Message(content: loadErrorMessage, isUserMessage: false)
+                ChatMessage(content: loadErrorMessage, isUserMessage: false)
             )
             criticalError = loadErrorMessage
         }
@@ -138,18 +138,30 @@ class ChatViewModel: ObservableObject {
     }
 
     // MARK: - Realm Integration
-    public func loadInitialData() {
-        loadLatestSessionOrCreateNew()
+    public func loadInitialData(sessionId: UUID?) async{
+        if let id = sessionId {
+            do {
+                if let session = try await RealmService.shared.getChatSession(by: id)
+                {
+                    loadSession(session)
+                    return
+                }
+            } catch {
+                print("Error finding session by ID: \(error)")
+            }
+        } else {
+            createNewChatSession()
+        }
     }
 
-    public func loadSession(_ session: ChatSession) {
+    public func loadSession(_ session: ChatSessionEntity) {
         self.currentSession = session
 
         let sortedEntities = session.messages.sorted(by: {
             $0.timestamp < $1.timestamp
         })
         self.messages = sortedEntities.map { entity in
-            Message(
+            ChatMessage(
                 id: entity.id,
                 content: entity.content,
                 isUserMessage: entity.isUserMessage,
@@ -164,20 +176,7 @@ class ChatViewModel: ObservableObject {
         self.needsContextInjection = true
     }
 
-    private func loadLatestSessionOrCreateNew() {
-        do {
-            if let latest = try RealmService.shared.getLatestChatSession() {
-                loadSession(latest)
-            } else {
-                createNewSession()
-            }
-        } catch {
-            print("Error initializing Realm: \(error)")
-            createNewSession()
-        }
-    }
-
-    public func createNewSession() {
+    public func createNewChatSession() {
         do {
             let newSession = try RealmService.shared.createNewChatSession()
             self.currentSession = newSession
@@ -191,18 +190,11 @@ class ChatViewModel: ObservableObject {
         }
     }
 
-    private func saveMessageToDatabase(_ message: Message) {
+    private func saveMessageToDatabase(_ message: ChatMessage) {
         guard let session = currentSession else { return }
 
         do {
-            let entity = ChatMessage(
-                content: message.content,
-                isUserMessage: message.isUserMessage,
-                imageData: message.uiImage?.jpegData(compressionQuality: 0.8)
-            )
-            entity.id = message.id
-            entity.timestamp = message.timestamp
-
+            let entity = ChatMessageEntity.fromModel(message)
             try RealmService.shared.saveMessage(entity, to: session)
         } catch {
             print("Error saving message: \(error)")
@@ -218,7 +210,7 @@ class ChatViewModel: ObservableObject {
                 || imageToSend != nil
         else { return }
 
-        let userMessage = Message(
+        let userMessage = ChatMessage(
             content: text,
             isUserMessage: true,
             uiImage: imageToSend
@@ -226,24 +218,19 @@ class ChatViewModel: ObservableObject {
         messages.append(userMessage)
         saveMessageToDatabase(userMessage)
 
-        // Clear input field and selected image *after* capturing them and creating the message
         inputText = ""
-        clearSelectedImage()  // This will set selectedUIImage to nil
+        clearSelectedImage()
 
-        // Send message to LLM and process response
-        // Cancel any existing generation task before starting a new one
         generationTask?.cancel()
 
         generationTask = Task {
             defer {
-                // Ensure isThinking is reset and task is cleared when the task finishes or is cancelled
                 Task { @MainActor in
                     self.isThinking = false
                     self.generationTask = nil
                 }
             }
             do {
-                // Check for cancellation before proceeding
                 try Task.checkCancellation()
 
                 guard let chat = currentChat else {
@@ -251,7 +238,7 @@ class ChatViewModel: ObservableObject {
                         "Chat session is not ready. The selected model might be loading or failed to initialize."
                     NSLog(chatNotReadyMessage)
                     messages.append(
-                        Message(
+                        ChatMessage(
                             content: chatNotReadyMessage,
                             isUserMessage: false
                         )
@@ -263,7 +250,7 @@ class ChatViewModel: ObservableObject {
                 // Add a placeholder for the AI response
                 let responseIndex = messages.count
                 messages.append(
-                    Message(content: "thinking...", isUserMessage: false)
+                    ChatMessage(content: "thinking...", isUserMessage: false)
                 )
                 isThinking = true
 
@@ -325,7 +312,7 @@ class ChatViewModel: ObservableObject {
                     // Update the placeholder message with the accumulated response
                     if responseIndex < messages.count {
                         let existingMsg = messages[responseIndex]
-                        messages[responseIndex] = Message(
+                        messages[responseIndex] = ChatMessage(
                             id: existingMsg.id,
                             content: fullResponse,
                             isUserMessage: false,
@@ -334,7 +321,6 @@ class ChatViewModel: ObservableObject {
                     }
                 }
 
-                // Save final assistant message to DB
                 if responseIndex < messages.count {
                     self.saveMessageToDatabase(messages[responseIndex])
                 }
@@ -349,7 +335,7 @@ class ChatViewModel: ObservableObject {
                     "Error during message processing: \(error.localizedDescription)"
                 NSLog(sendMessageError)
                 messages.append(
-                    Message(content: sendMessageError, isUserMessage: false)
+                    ChatMessage(content: sendMessageError, isUserMessage: false)
                 )
             }
         }
@@ -373,7 +359,7 @@ class ChatViewModel: ObservableObject {
 
     // MARK: - Chat Management
     func clearChat() {
-        createNewSession()
+        createNewChatSession()
     }
 
     // MARK: - Model Switching
@@ -422,7 +408,7 @@ class ChatViewModel: ObservableObject {
             let noModelErrorMessage = "Cannot apply settings: No model loaded."
             NSLog(noModelErrorMessage)
             messages.append(
-                Message(content: noModelErrorMessage, isUserMessage: false)
+                ChatMessage(content: noModelErrorMessage, isUserMessage: false)
             )
             return
         }
@@ -437,7 +423,7 @@ class ChatViewModel: ObservableObject {
                 )
                 self.isApplyingSettings = false
                 messages.append(
-                    Message(
+                    ChatMessage(
                         content:
                             "Inference settings applied. Chat context reset. Ready for new conversation with \(model.identifier.displayName).",
                         isUserMessage: false
@@ -450,7 +436,7 @@ class ChatViewModel: ObservableObject {
                     "Error applying inference settings: \(error.localizedDescription)"
                 NSLog(applySettingsErrorMessage)
                 messages.append(
-                    Message(
+                    ChatMessage(
                         content: applySettingsErrorMessage,
                         isUserMessage: false
                     )

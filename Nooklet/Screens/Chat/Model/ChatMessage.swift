@@ -1,32 +1,38 @@
+//
+//  MessageModel.swift
+//  Nooklet
+//
+//  Created by Tu on 16/6/26.
+//
+
 import Foundation
-import RealmSwift
 import SwiftUI
 
-class ChatMessage: Object, ObjectKeyIdentifiable {
-    @Persisted(primaryKey: true) var id: UUID = UUID()
-    @Persisted var content: String = ""
-    @Persisted var isUserMessage: Bool = true
-    @Persisted var timestamp: Date = Date()
-    
-    // CoreData/SwiftData/Realm handles Data natively. We store the UIImage as Data (PNG or JPEG)
-    @Persisted var imageData: Data?
-    
-    // Reference back to session
-    @Persisted(originProperty: "messages") var session: LinkingObjects<ChatSession>
-    
-    convenience init(content: String, isUserMessage: Bool, imageData: Data? = nil) {
-        self.init()
-        self.id = UUID()
+/// Represents a single message in the chat, including content, sender, timestamp, and an optional image.
+struct ChatMessage: Identifiable, Equatable {
+    let id: UUID
+    let content: String
+    let isUserMessage: Bool
+    let timestamp: Date
+    let uiImage: UIImage?
+
+    init(
+        id: UUID = UUID(),
+        content: String,
+        isUserMessage: Bool,
+        timestamp: Date = Date(),
+        uiImage: UIImage? = nil
+    ) {
+        self.id = id
         self.content = content
         self.isUserMessage = isUserMessage
-        self.timestamp = Date()
-        self.imageData = imageData
+        self.timestamp = timestamp
+        self.uiImage = uiImage
     }
-    
-    var uiImage: UIImage? {
-        if let data = imageData {
-            return UIImage(data: data)
-        }
-        return nil
+
+    static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
+        lhs.id == rhs.id && lhs.content == rhs.content
+            && lhs.isUserMessage == rhs.isUserMessage
+            && lhs.timestamp == rhs.timestamp && lhs.uiImage == rhs.uiImage
     }
 }

@@ -6,7 +6,7 @@
 //
 import Foundation
 
-enum AppTab: String, MorphingTabBarProtocol {
+enum AppTab: String, CaseIterable {
     case home = "Home"
     case chat = "Chat"
     case setting = "Setting"
@@ -16,6 +16,17 @@ enum AppTab: String, MorphingTabBarProtocol {
         case .home: "house.fill"
         case .chat: "magnifyingglass"
         case .setting: "gear"
+        }
+    }
+
+    func imageName(isActive: Bool) -> String {
+        return switch self {
+        case .home:
+            isActive ? "HomeActive" : "HomeInactive"
+        case .chat:
+            isActive ? "ExploreActive" : "ExploreInactive"
+        case .setting:
+            isActive ? "SettingActive" : "SettingInactive"
         }
     }
 }

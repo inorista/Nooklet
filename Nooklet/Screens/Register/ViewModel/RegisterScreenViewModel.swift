@@ -36,9 +36,10 @@ class RegisterScreenViewModel: ObservableObject {
             imageData: selectedAvatar,
             birthDay: birthday
         )
+        let userEntity: UserEntity = user.toEntity()
 
         do {
-            try RealmService.shared.saveUser(user)
+            try RealmService.shared.saveUser(userEntity)
         } catch {
             print("Error saving user to Realm: \(error)")
         }

@@ -50,7 +50,6 @@ struct CustomButton: View {
         )
         .buttonStyle(.borderedProminent)
         .tint(buttonColor)
-        .shadow(color: shadowColor ?? .clear, radius: 4, x: 0, y: 0)
         .cornerRadius(self.cornerRadius ?? 12)
     }
 }

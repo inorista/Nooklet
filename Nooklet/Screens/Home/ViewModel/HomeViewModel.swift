@@ -13,6 +13,7 @@ import UIKit
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published private(set) var greeting: String = "Good morning,"
+    @Published private(set) var chatSessions: [HomeChatSession] = []
     @Published var user: User?
 
     private func getGreeting() -> String {
@@ -33,11 +34,32 @@ class HomeViewModel: ObservableObject {
         self.greeting = getGreeting()
     }
 
-    public func loadUserData() async {
+    private func loadChatHistories() -> [HomeChatSession] {
         do {
-            self.user = try RealmService.shared.getUser()
+            let chatSessions: [ChatSessionEntity] =
+                try RealmService.shared.getChatSessions(10)
+
+            let homeChatSessions: [HomeChatSession] = chatSessions.map {
+                $0.toHomeChatSessionModel()
+            }
+            return homeChatSessions
         } catch {
-            print("Error loading user from Realm: \(error)")
+            return []
         }
+    }
+
+    private func loadUser() -> User? {
+        do {
+            let userEntity = try RealmService.shared.getUser()
+            let user = userEntity?.toModel()
+            return user
+        } catch {
+            return nil
+        }
+    }
+
+    public func initData() async {
+        chatSessions = loadChatHistories()
+        user = loadUser()
     }
 }
