@@ -91,9 +91,9 @@ nemotron-3.5-ios/
 │   └── .gitkeep
 ├── Samples/                         # test wavs + reference transcripts (gitignored)
 │   └── manifest.json
-└── NemotronASRPoC/
+└── Nooklet/
     ├── App/
-    │   ├── NemotronASRPoCApp.swift
+    │   ├── NookletApp.swift
     │   ├── ContentView.swift
     │   ├── TranscriptView.swift
     │   └── BenchmarkPanelView.swift
@@ -136,22 +136,22 @@ xcodegen generate
 # Download model (multilingual, 2240 ms default tier) into Models/
 ./scripts/download_models.sh multilingual 2240
 
-# Inspect the real CoreML signatures → NemotronASRPoC/ASR/ModelSignatures.json
+# Inspect the real CoreML signatures → Nooklet/Services/ASR/ModelSignatures.json
 python3 scripts/inspect_model.py Models/multilingual/2240ms
 
 # Build for simulator (smoke test the shell; ANE/real inference needs a device)
-xcodebuild -scheme NemotronASRPoC -destination 'generic/platform=iOS Simulator' build
+xcodebuild -scheme Nooklet -destination 'generic/platform=iOS Simulator' build
 
 # Build + run on a connected device (real benchmark target)
-xcodebuild -scheme NemotronASRPoC -destination 'platform=iOS,name=<device>' build
+xcodebuild -scheme Nooklet -destination 'platform=iOS,name=<device>' build
 
 # Unit tests (resampler, chunk buffer, tokenizer, RNN-T decode on fixtures)
-xcodebuild -scheme NemotronASRPoC -destination 'platform=iOS Simulator,name=iPhone 16 Pro' test
+xcodebuild -scheme Nooklet -destination 'platform=iOS Simulator,name=iPhone 16 Pro' test
 
 # Run a single test
-xcodebuild test -scheme NemotronASRPoC \
+xcodebuild test -scheme Nooklet \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  -only-testing:NemotronASRPoCTests/TokenizerTests/testCJKJoining
+  -only-testing:NookletTests/TokenizerTests/testCJKJoining
 ```
 
 ---

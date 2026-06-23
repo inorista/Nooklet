@@ -143,14 +143,14 @@ because Chinese, Japanese, and Korean require full multilingual vocabulary.
 7. Project Structure
 
 NemotronASR-iOS-PoC/
-├── NemotronASRPoC.xcodeproj
+├── Nooklet.xcodeproj
 ├── Models/
 │   ├── NemotronEncoder.mlmodelc
 │   ├── NemotronDecoder.mlmodelc
 │   ├── NemotronJoint.mlmodelc
 │   └── tokenizer.json / vocab.json
 ├── App/
-│   ├── NemotronASRPoCApp.swift
+│   ├── NookletApp.swift
 │   ├── ContentView.swift
 │   └── TranscriptView.swift
 ├── Audio/

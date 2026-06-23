@@ -1,196 +1,159 @@
-# Nemotron ASR iOS PoC
+# Nooklet
 
-On-device, offline, streaming speech recognition PoC using NVIDIA
-**Nemotron-3.5-ASR Streaming 0.6B** (multilingual) via CoreML on iPhone/iPad.
+Nooklet is a privacy-first, fully offline, on-device AI assistant application for iOS. It combines streaming automatic speech recognition (ASR) via CoreML and interactive LLM chat via LiteRT, backed by local Realm persistence.
 
-**Both inference paths now run end-to-end on a physical device:** live mic streaming
-(Phase 7) and offline file transcription. The simulator still runs the full shell
-(audio + benchmark) on CPU/GPU but is not representative of ANE performance.
+The official app icon and assets are located at `Nooklet/Resources/Assets.xcassets/AppIcon.appiconset`.
 
-See [`IMPLEMENTATION-PLAN.md`](IMPLEMENTATION-PLAN.md) for the full engineering plan
-and [`proposed-plan.md`](proposed-plan.md) for the original product intent.
+---
 
-## Requirements
+## Key Features
 
-- Xcode 16+ (built/tested with Xcode 26.3)
-- iOS 17+
-- iPhone 15 Pro or newer recommended (ANE); device required for real inference
-- [XcodeGen](https://github.com/yonsm/XcodeGen) (`brew install xcodegen`)
-- Microphone permission
-- CoreML model files downloaded separately (see **Model Setup**)
+- **On-Device Streaming ASR**: Real-time, low-latency streaming speech recognition using NVIDIA's **Nemotron-3.5-ASR Streaming 0.6B** model converted to CoreML.
+- **Offline File Transcription**: Direct audio file transcription using local hardware acceleration on the Apple Neural Engine (ANE).
+- **On-Device LLM Chat (Gemma 2B)**: Interactive, private conversations using Google's Gemma model via the `LiteRTLM` framework.
+- **Sliding Context Window Memory**: Auto-resets local LLM context to fit GPU memory limits (max 1024 tokens) while automatically injecting recent history into the prompt to preserve short-term memory.
+- **Local Persistence (Realm)**: Secure, local storage for all chat history, sessions, messages, and user profile data.
+- **Premium Glassmorphism UI**: Beautiful, translucent interface featuring native SwiftUI `TabView` with system-level glass effects (`ultraThinMaterial`) and custom active/inactive tab bar icons.
 
-## Build & Run
+---
+
+## Tech Stack
+
+- **Platform**: iOS 17.0+
+- **Language**: Swift 5.10+
+- **UI Framework**: SwiftUI
+- **Database**: Realm Swift (10.54.6+)
+- **LLM Engine**: LiteRTLM (via local package `/Users/tu/Nooket/LiteRT-LM` / TensorFlow Lite GenAI)
+- **ASR Engine**: CoreML (Apple Neural Engine / GPU / CPU fallback)
+- **Project Scaffold**: XcodeGen (1.x)
+
+---
+
+## Prerequisites
+
+- **Xcode 16+** (built and tested with Xcode 26.3)
+- **macOS Sonoma/Sequoia** or newer
+- **XcodeGen** (`brew install xcodegen`)
+- **CocoaPods** or standard Swift Package Manager support
+- **On-Device Hardware**: iPhone 15 Pro or newer recommended for optimal Neural Engine performance. (Simulator is supported but falls back to CPU/GPU).
+
+---
+
+## Getting Started
+
+### 1. Generate the Xcode Project
+
+Nooklet uses XcodeGen to generate its `.xcodeproj` file. Do not commit or modify the `.xcodeproj` directory manually; make changes in `project.yml` and regenerate it:
 
 ```bash
-# 1. Generate the Xcode project from project.yml (run after any project.yml change)
+# Generate the Xcode project from project.yml configuration
 xcodegen generate
-
-# 2a. Build for the simulator (shell + audio + benchmark; no real inference)
-xcodebuild -scheme NemotronASRPoC -destination 'generic/platform=iOS Simulator' build
-
-# 2b. Or open in Xcode and run on a physical device
-open NemotronASRPoC.xcodeproj
-
-# 3. Run unit tests (resampler, chunk buffer, latency tracker)
-xcodebuild test -scheme NemotronASRPoC -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
-
-# Run a single test
-xcodebuild test -scheme NemotronASRPoC \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:NemotronASRPoCTests/AudioPipelineTests/testResamplerDownsamplesTo16k
 ```
 
-The app **runs without the model present** — it shows a "models not found" status
-but still captures mic audio, resamples to 16 kHz, chunks to the streaming tier, and
-reports live benchmark metrics. This lets you validate the shell before the download.
+### 2. Open Project & Resolve Dependencies
 
-The file-transcription tests are gated on user-supplied clips in `TestAudio/` (the
-folder is gitignored — provide your own). Name each clip with a **language hint** so the
-suite picks the right prompt, e.g. `sample-en.m4a` (English) or `sample-yue.m4a`
-(Cantonese → `auto`). Tests skip cleanly when no matching clip (or the model) is present.
+```bash
+# Open in Xcode
+open Nooklet.xcodeproj
+```
+
+Xcode will automatically fetch the required Swift Package dependencies defined in `project.yml`, including `RealmSwift`, `Moya`, `Alamofire`, `SwiftyJSON`, and the local `LiteRTLM` package.
+
+### 3. Build & Test
+
+```bash
+# Build for generic iOS simulator
+xcodebuild -project Nooklet.xcodeproj -scheme Nooklet -destination 'generic/platform=iOS Simulator' build
+
+# Run unit tests
+xcodebuild test -project Nooklet.xcodeproj -scheme Nooklet -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+```
+
+---
 
 ## Model Setup
 
-Default target: **`multilingual` @ 2240 ms** (~634 MB; covers EN / zh / ja / ko;
-Cantonese has no dedicated prompt and falls back to `auto`).
+### ASR Model (NVIDIA Nemotron-3.5-ASR)
+
+The default target is the multilingual RNN-T model @ 2240 ms (~634 MB) supporting English, Chinese, Japanese, and Korean.
 
 ```bash
-# Download all five .mlmodelc bundles + tokenizer + metadata into Models/multilingual/2240ms/
+# 1. Download CoreML model files, tokenizer, and metadata
 ./scripts/download_models.sh multilingual 2240
 
-# Re-inspect to refresh signatures (already checked in, but re-run if you change tier)
-python3 scripts/inspect_model.py Models/multilingual/2240ms --out NemotronASRPoC/ASR/ModelSignatures.json
+# 2. Inspect the model signatures to refresh configurations (generates ModelSignatures.json)
+python3 scripts/inspect_model.py Models/multilingual/2240ms --out Nooklet/Services/ASR/ModelSignatures.json
 
-# Re-bundle the Models/ folder into the app
+# 3. Regenerate project to bundle downloaded models
 xcodegen generate
 ```
 
-Expected files in `Models/multilingual/2240ms/`:
+### LLM Model (Gemma 2B)
+
+Ensure your Gemma 2B model (`.bin` or compatible `LiteRTLM` format) is placed under the required bundle resources or local cache path as expected by the `LlmInference.swift` service. The default configuration uses:
+- **`maxNumTokens`**: 1024 (safe limit for Gemma 2B on iOS GPU).
+- **`contextThreshold`**: 800 (triggers local context optimization and history re-injection).
+
+---
+
+## Architecture Overview
+
+### Directory Structure
 
 ```
-preprocessor.mlmodelc   # audio[1,?] → mel[1,128,?], mel_length
-encoder.mlmodelc        # mel + caches + prompt_id → encoded + updated caches (stateful)
-decoder_joint.mlmodelc  # B1 fused decoder⊕joint — default RNN-T step
-decoder.mlmodelc        # fallback (unfused)
-joint.mlmodelc          # fallback (unfused)
-tokenizer.json          # 13,087-token multilingual vocab
-metadata.json           # prompt dictionary, cache shapes, vocab/blank
+Nooklet/
+├── App/                # App entry point, AppCoordinator
+├── CommonViews/        # Reusable UI controls and custom views
+├── Databases/          # Database Entities (ChatMessageEntity, ChatSessionEntity) and Realm schemas
+├── Enums/              # Shared enums (AppTab, etc.)
+├── Helpers/            # Helper extensions and formatters
+├── Resources/          # Assets.xcassets, AppIcon, Info.plist
+├── Screens/            # Feature screens
+│   ├── Chat/           # Chat window, bubble rendering, and view models
+│   ├── Dashboard/      # Tab bar navigation structure
+│   ├── Home/           # Greeting screen and horizontal chat history cards
+│   └── Register/       # Local user profile configuration
+└── Services/           # Services (RealmService, UserDefaultsService, LlmInference, NemotronASRService)
 ```
 
-Source: <https://huggingface.co/FluidInference/Nemotron-3.5-ASR-Streaming-Multilingual-0.6b-CoreML>
+### Request and Data Flow
 
-### Verified model signatures (Phase 4)
+```
+User Voice/Text ──▶ ASR/Input Processing ──▶ ChatViewModel ──▶ LiteRTLM (Gemma 2B)
+       │                                         │
+       ▼                                         ▼
+Realm Database ◀───────────────────────── User & Assistant Messages
+```
 
-`NemotronASRPoC/ASR/ModelSignatures.json` is generated from the real model and
-consumed at runtime so no tensor names / prompt IDs are hardcoded. Highlights:
+- **RealmService**: Handles CRUD operations for `User`, `ChatSessionEntity`, and `ChatMessageEntity` on the `@MainActor` thread.
+- **ChatViewModel**: Manages the conversational state. When token length approaches the limit, it resets the C++ `Conversation` context and automatically schedules a **Context Injection** of the last 4 messages in the next prompt.
+- **AppCoordinator**: Manages screen navigation flow.
 
-- **Audio:** 16 kHz mono; preprocessor takes `audio`[1,?] (1–1,280,000 samples).
-- **Mel:** 128 features, `total_mel_frames` = 233 (224 chunk + 9 pre-encode cache).
-- **Encoder state (explicit tensors, not `MLState`):** `cache_channel`[1,24,42,1024],
-  `cache_time`[1,24,1024,8], `cache_len`[1] — passed in and returned as `*_out`.
-- **Encoder output:** `encoded`[1,1024,28] (≈28 frames per 2.24 s chunk) + `prompt_id`.
-- **RNN-T step (`decoder_joint`):** LSTM state `h_in`/`c_in`[2,1,640], `token`[1,1],
-  `encoder`[1,1024,1] → `logits`[1,1,1,13088], `h_out`/`c_out`.
-- **Vocab:** 13,087 tokens, **blank_idx = 13087**.
-- **Prompt IDs:** en-US=0, zh-CN=4, zh-TW=5, ja-JP=10, ko-KR=14, default(auto)=101.
+---
 
-## Status
+## Troubleshooting
 
-| Phase | Scope | State |
-|---|---|---|
-| 1 | XcodeGen scaffold + SwiftUI shell (Start/Stop/Clear, language + tier pickers, transcript + benchmark panel) | ✅ Done |
-| 2 | Mic capture → 16 kHz mono → tier-aligned chunk buffer | ✅ Done |
-| 3 | Benchmark instrumentation (load time, latency p50/p90/p99, RTF, peak memory, thermal) | ✅ Done |
-| 4 | Model download + CoreML signature inspection (`scripts/`, `ModelSignatures.json`) | ✅ Done |
-| 5 | CoreML loading + adaptive runner (`CoreMLModelRunner`, compute-unit fallback) | ✅ Done |
-| 6 | RNN-T greedy decoder + tokenizer + file transcription (`NemotronASRService`) | ✅ Done |
-| 7 | Live mic streaming integration (`StreamingTranscriber`) — verified on device | ✅ Done |
-| 8 | Accuracy test set + Whisper baseline + benchmark results | ⬜ Next |
-
-**Live mic streaming** (`StreamingTranscriber`) now transcribes in real time on a
-physical device: mic chunks are queued FIFO and drained by a single in-order consumer
-(`RecordingController.consume`), threading the encoder caches + RNN-T predictor state
-across chunks. **Imported file transcription** (Files importer → `transcribeImportedFile`)
-runs the same offline pipeline on a picked clip. Both were debugged and confirmed
-working on real hardware in commit `6874345`.
-
-End-to-end file transcription also runs as a test: `EndToEndTranscriptionTests.testTranscribeMeetingClip`
-transcribes the first 60 s of the meeting clip on the iOS Simulator (CPU/GPU) at
-**RTF ≈ 0.14**. Run it with:
-
+### 1. SQLite Database Lock (`disk I/O error`)
+If Xcode complains about database locks when building:
 ```bash
-xcodebuild test -scheme NemotronASRPoC \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:NemotronASRPoCTests/EndToEndTranscriptionTests/testTranscribeMeetingClip
+# Clear DerivedData cache
+rm -rf ~/Library/Developer/Xcode/DerivedData/Nooklet-*
+# Resolve package dependencies cleanly
+xcodebuild -project Nooklet.xcodeproj -scheme Nooklet -resolvePackageDependencies
 ```
 
-## Architecture (current)
+### 2. Missing CoreML model files
+If the app starts but shows a "Models not found" status:
+- Ensure the model bundles exist in the `Models/` directory before running `xcodegen generate`. The app degrades gracefully to run benchmarks even when models are absent.
 
+### 3. Simulator Architecture Mismatches (`x86_64`)
+The `LiteRTLM` package binary target (`CLiteRTLM`) only supports `arm64` for device and simulator. When building from the command line, compile for Apple Silicon (`arm64`) using:
+```bash
+xcodebuild -project Nooklet.xcodeproj -scheme Nooklet -destination "generic/platform=iOS" build
 ```
-AVAudioEngine ─▶ AudioResampler (16 kHz mono) ─▶ AudioChunkBuffer (tier-aligned)
-        │                                                  │
-        └──────────────▶ RecordingController ◀─────────────┘
-                              │   (drives BenchmarkLogger + ASRState)
-                              ▼
-                   SwiftUI: ContentView / TranscriptView / BenchmarkPanelView
-```
 
-`RecordingController` drives both inference paths. For live mic streaming, the audio
-queue yields chunks into an `AsyncStream` and a single `consume(chunk:)` consumer drains
-them strictly in order into `StreamingTranscriber.ingest`, which runs the full inference
-(preprocessor → encoder(cache) → RNN-T decode → tokenizer) off the main actor and threads
-encoder caches + predictor state across chunks. When the model bundle is absent it falls
-back to recording per-chunk timing only (graceful degradation). A re-entrancy guard on
-`start()` prevents a double tap from loading a second ~634 MB model.
-
-## Inference recipe (Phases 5–6, implemented)
-
-`NemotronASRService.transcribeFile(url:language:maxSeconds:)` runs the full path:
-
-1. Decode the file → 16 kHz mono (`AudioFileLoader`), trimmed to `maxSeconds`.
-2. Run the **preprocessor once on the whole clip** → a continuous mel `[128, N]`.
-   (The preprocessor accepts up to ~80 s; a centered STFT yields `1 + samples/hop`
-   frames, e.g. 225 for a 2240 ms chunk — the chunk stride is `chunk_mel_frames`=224.)
-3. Slice the mel into fixed **233-frame encoder windows** (`pre_encode_cache`=9 frames
-   of real left context + 224 new), advancing by 224. Zeros precede the start;
-   the final window is zero-padded and reports a smaller `mel_length`.
-4. `NemotronEncoderRunner` threads the three encoder caches (`cache_*` → `cache_*_out`)
-   across windows for the whole file (never reset within a file); `prompt_id`
-   conditions the encoder only.
-5. `RNNTDecoder` greedy-decodes each window's frames, **persisting predictor state
-   (token + LSTM h/c) across windows** (reset only per utterance), capped at 10
-   symbols/frame.
-6. `Tokenizer` detokenizes (SentencePiece `▁`→space; CJK needs no special case).
-
-## Known issues / open items
-
-- `prompt_id` map + CoreML tensor names are **loaded at runtime** from
-  `ModelSignatures.json` (generated by `inspect_model.py`), never hardcoded. ✅
-- The CoreML log line `[espresso] … ios17.slice_by_index: zero shape error` during
-  encoder load is **benign** flexible-shape type-inference noise — the module loads
-  and produces correct `[1,1024,28]` output.
-- Transcript **accuracy** isn't measured yet (no WER/CER scorer or Whisper baseline);
-  that's Phase 8. The 60 s smoke test only asserts a sane, non-degenerate transcript.
-- Cantonese (`yue-Hant-HK`) coverage depends on the multilingual vocab; keep Whisper
-  as a fallback per the plan if CER is weak.
-- ANE behavior and the memory ceiling can only be validated on device (the Simulator
-  runs CoreML on CPU/GPU — correctness-faithful but not representative of ANE perf).
+---
 
 ## License
 
-Source code is released under the [MIT License](LICENSE). This covers the app code only —
-the NVIDIA Nemotron-3.5-ASR model weights are **not** included and remain subject to their
-own license on [Hugging Face](https://huggingface.co/FluidInference/Nemotron-3.5-ASR-Streaming-Multilingual-0.6b-CoreML).
-
-## Built with
-
-Development of this PoC was assisted by these tools:
-
-- **[WhisKey](https://whiskey.asktobuild.app)** — quick on-device dictation of notes,
-  commit messages, and issue descriptions.
-- **[TokKong](https://tokkong.forthrighttech.com)** — offline transcription and
-  translation of reference material (NVIDIA / CoreML docs, model cards) during development.
-- **[Lounge](https://lounge.asktobuild.app)** — surfaced long-running build, test, and
-  agent jobs on the desktop.
-- **[NotifyMe](https://github.com/lbj96347/notifyme)** — pushed alerts to phone when
-  long transcription test runs and model downloads finished.
+Source code is released under the [MIT License](LICENSE). NVIDIA Nemotron and Google Gemma model weights are subject to their own respective licenses.

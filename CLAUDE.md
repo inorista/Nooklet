@@ -19,14 +19,14 @@ removing source files, or after downloading models (so `Models/` is re-bundled).
 
 ```bash
 xcodegen generate                                    # regenerate the project
-xcodebuild -scheme NemotronASRPoC \
+xcodebuild -scheme Nooklet \
   -destination 'generic/platform=iOS Simulator' build
-xcodebuild test -scheme NemotronASRPoC \
+xcodebuild test -scheme Nooklet \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 # single test:
-xcodebuild test -scheme NemotronASRPoC \
+xcodebuild test -scheme Nooklet \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:NemotronASRPoCTests/AudioPipelineTests/testResamplerDownsamplesTo16k
+  -only-testing:NookletTests/AudioPipelineTests/testResamplerDownsamplesTo16k
 ```
 
 The simulator builds/runs the full shell (audio + benchmark) but **cannot run real
@@ -37,7 +37,7 @@ inference** — a physical device (iPhone 15 Pro+ for ANE) is required for that.
 ```bash
 ./scripts/download_models.sh multilingual 2240       # → Models/multilingual/2240ms/
 python3 scripts/inspect_model.py Models/multilingual/2240ms \
-  --out NemotronASRPoC/ASR/ModelSignatures.json      # regenerate signatures if tier changes
+  --out Nooklet/Services/ASR/ModelSignatures.json      # regenerate signatures if tier changes
 xcodegen generate                                    # re-bundle Models/ into the app
 ```
 
@@ -45,29 +45,47 @@ xcodegen generate                                    # re-bundle Models/ into th
 `project.yml` as an **optional folder** (`type: folder`), so `.mlmodelc` bundles are
 copied as resources when present and the app still builds when absent.
 
-## Architecture (MVVM)
+## Architecture (MVVM + Per-Screen Folders)
 
-The project follows the **MVVM** (Model-View-ViewModel) pattern:
+The project follows the **MVVM** (Model-View-ViewModel) pattern with **per-screen folders**
+under `Screens/` and a centralised `AppRouter` for SwiftUI navigation:
 
 ```
-┌─── Models/ ──────────────────────────────────────────────┐
-│  ASRSessionStatus, ASRLanguage, StreamingTier,           │
-│  BenchmarkSnapshot, LanguagePromptMap                    │
-└──────────────────────────────────────────────────────────┘
+┌─── App/ ──────────────────────────────────────────────────┐
+│  NookletApp (@main)                                │
+│  AppRouter (@Observable — Route enum + NavigationPath)     │
+│  RootView (NavigationStack host)                          │
+└───────────────────────────────────────────────────────────┘
+                          │
+┌─── Models/ (shared) ────┼─────────────────────────────────┐
+│  ASRSessionStatus, ASRLanguage, StreamingTier,            │
+│  BenchmarkSnapshot, LanguagePromptMap                     │
+└─────────────────────────┼─────────────────────────────────┘
                           ▲
-┌─── ViewModels/ ─────────┼────────────────────────────────┐
-│  RecordingViewModel (@Observable @MainActor)             │
-│  • exposes state + actions to Views                      │
-│  • delegates heavy work to RecordingService              │
-└────────────┬────────────┼────────────────────────────────┘
+┌─── Screens/Recording/ ──┼─────────────────────────────────┐
+│  ViewModels/                                              │
+│    RecordingViewModel (@Observable @MainActor)            │
+│  Views/                                                   │
+│    RecordingScreen, TranscriptView, BenchmarkPanelView    │
+│  Models/ (screen-specific, currently empty)               │
+└────────────┬────────────┼─────────────────────────────────┘
              │            │
-┌─── Views/ ─┘            └─── Services/ ─────────────────┐
-│  ContentView             RecordingService (@MainActor)   │
-│  TranscriptView            drives ASRState + pipeline    │
-│  BenchmarkPanelView      Services/ASR/ (CoreML pipeline) │
-│                          Services/Audio/ (mic + resample)│
-│                          Services/Benchmark/ (metrics)   │
-└──────────────────────────────────────────────────────────┘
+             │            └─── Services/ ───────────────────┐
+             │            RecordingService (@MainActor)      │
+             │              drives ASRState + pipeline       │
+             │            Services/ASR/ (CoreML pipeline)    │
+             │            Services/Audio/ (mic + resample)   │
+             │            Services/Benchmark/ (metrics)      │
+             └────────────────────────────────────────────────┘
+```
+
+Navigation flow:
+
+```
+NookletApp → AppRouter (environment) → RootView
+  └── NavigationStack(path: $router.path)
+        └── RecordingScreen (home)
+              └── .navigationDestination(for: Route.self) { ... }
 ```
 
 Audio pipeline (Phases 1–3, working today):
@@ -78,15 +96,19 @@ AVAudioEngine → AudioResampler (16 kHz mono) → AudioChunkBuffer (tier-aligne
                           RecordingService ←──────────┘  (@MainActor)
                               drives BenchmarkLogger + ASRState (@Observable)
                               ↓
-                   RecordingViewModel → ContentView / TranscriptView / BenchmarkPanelView
+                   RecordingViewModel → RecordingScreen / TranscriptView / BenchmarkPanelView
 ```
 
+- **`App/AppRouter.swift`** — `Route` enum (`.recording`, `.settings`) + `AppRouter`
+  (`@Observable`) wrapping `NavigationPath`. Push/pop/popToRoot helpers.
+- **`App/RootView.swift`** — hosts `NavigationStack(path:)` and dispatches
+  `.navigationDestination(for: Route.self)` to the correct screen.
 - **`Models/`** — Shared data types (`ASRSessionStatus`, `ASRLanguage`, `StreamingTier`,
   `BenchmarkSnapshot`) used across all layers.
-- **`ViewModels/RecordingViewModel.swift`** — the MVVM ViewModel. Wraps `ASRState` +
-  `RecordingService`, exposes observable state and actions. All UI-related computed
-  properties (`canStart`, `statusColor`, `isSessionActive`) live here.
-- **`Views/`** — SwiftUI views that bind exclusively to the ViewModel.
+- **`Screens/Recording/ViewModels/RecordingViewModel.swift`** — the MVVM ViewModel.
+  Wraps `ASRState` + `RecordingService`, exposes observable state and actions. All
+  UI-related computed properties (`canStart`, `statusColor`, `isSessionActive`) live here.
+- **`Screens/Recording/Views/`** — SwiftUI views that bind exclusively to the ViewModel.
 - **`Services/RecordingService.swift`** — the orchestrator (formerly RecordingController).
   `consume(chunk:)` is the single seam where Phases 5–7 plug in real inference
   (preprocessor → encoder(cache) → RNN-T decode → tokenizer).
@@ -99,10 +121,11 @@ AVAudioEngine → AudioResampler (16 kHz mono) → AudioChunkBuffer (tier-aligne
   missing-reason for graceful degradation. Required modules: `preprocessor`, `encoder`,
   `decoder_joint` (fused default); `decoder`/`joint` are optional fallbacks.
 
+
 ### Signature-driven, never hardcoded
 
 `scripts/inspect_model.py` reads the real CoreML model and emits
-`NemotronASRPoC/ASR/ModelSignatures.json`. At runtime `ModelSignatures.swift` loads it
+`Nooklet/Services/ASR/ModelSignatures.json`. At runtime `ModelSignatures.swift` loads it
 so **tensor names, shapes, the vocab/blank index, and the language→`prompt_id` map are
 all data, never hardcoded** in Swift. When changing models/tiers, regenerate this JSON
 rather than editing constants. Key facts it carries: 16 kHz mono, 128 mel features,

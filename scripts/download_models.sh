@@ -57,5 +57,5 @@ curl -fL --retry 3 -s "${BASE}/manifest.json" -o "${ROOT}/Models/manifest.json" 
 
 echo
 echo "Done. Next:"
-echo "  python3 scripts/inspect_model.py Models/${VARIANT}/${TIER}ms --out NemotronASRPoC/ASR/ModelSignatures.json"
+echo "  python3 scripts/inspect_model.py Models/${VARIANT}/${TIER}ms --out Nooklet/ASR/ModelSignatures.json"
 echo "  xcodegen generate   # bundle the new Models/ folder"
