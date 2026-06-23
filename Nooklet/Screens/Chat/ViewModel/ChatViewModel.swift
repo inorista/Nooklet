@@ -11,17 +11,36 @@ import RealmSwift
 import SwiftUI
 import UIKit
 
+
+enum NookletModelInitStatus: Hashable  {
+    case loading(modelName: String)
+    case failed(modelName: String)
+    case loaded(userName: String)
+
+    var displayStatus: String{
+        switch self{
+        case .loading(let modelName):
+            "The \(modelName) model is initializing..."
+        case .failed(let modelName):
+            "Failed to load the \(modelName) model. Please try again."
+        case .loaded(let userName):
+            "Feel free to ask, \(userName)!"
+        }
+    }
+}
+
+
 @MainActor
 class ChatViewModel: ObservableObject {
+    @Published var showDeleteSheet: Bool = false
     @Published var messages: [ChatMessage] = []
     @Published var inputText: String = ""
     @Published var isModelLoading: Bool = true
     @Published var isThinking: Bool = false
-
+    @Published var modelInitStatus: NookletModelInitStatus = .loading(modelName: "")
     @Published var selectedUIImage: UIImage?
 
     /// Stores a critical error message if model initialization fails
-    @Published public var criticalError: String?
     @Published public var isApplyingSettings: Bool = false
 
     // MARK: - Model Switching State
@@ -46,10 +65,20 @@ class ChatViewModel: ObservableObject {
     private var generationTask: Task<Void, Error>?
 
     // MARK: - Realm State
-    public var currentSession: ChatSessionEntity?
+    @Published public var currentSession: ChatSessionEntity?
     private var needsContextInjection: Bool = false
 
+    @Published var showImagePicker: Bool = false
+    @Published var imageSourceType: UIImagePickerController.SourceType = .camera
+    @Published var isRecordingSpeech: Bool = false
+    
+    public let speechRecognizer = SpeechRecognizer()
+    
     init() {
+        speechRecognizer.$isRecording
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$isRecordingSpeech)
+
         Task {
             self.availableModels = ModelIdentifier.availableInBundle()
 
@@ -57,13 +86,13 @@ class ChatViewModel: ObservableObject {
                 let noModelsErrorMessage =
                     "Critical Error: No LLM models found in the app bundle. Please ensure model files (e.g., *.task) are correctly added to the project."
                 NSLog(noModelsErrorMessage)
-                criticalError = noModelsErrorMessage
                 isModelLoading = false
+                modelInitStatus = .failed(modelName: "Gemma 4")
                 return
             }
 
             var initialModelToLoad = ModelIdentifier.gemma2B
-
+            
             // Determine the actual initial model based on availability and preference
             let preferredModelFromStorage = ModelIdentifier(
                 rawValue: selectedModelIdentifierRawValue
@@ -87,18 +116,9 @@ class ChatViewModel: ObservableObject {
     /// Loads and initializes the specified LLM model and chat session.
     /// This is an async operation that updates loading states and messages.
     private func loadAndInitializeModel(identifier: ModelIdentifier) async {
+        modelInitStatus = .loading(modelName: identifier.displayName)
         isModelLoading = true
         messages.removeAll()
-        criticalError = nil
-
-        messages.append(
-            ChatMessage(
-                content:
-                    "Initializing \(identifier.displayName)... Please wait.",
-                isUserMessage: false
-            )
-        )
-
         do {
             NSLog("Attempting to load model: \(identifier.displayName)")
             currentOnDeviceModel = try await OnDeviceModel(
@@ -110,25 +130,14 @@ class ChatViewModel: ObservableObject {
                 topP: 0.95,
                 temperature: 1.0,
             )
-
-            messages.removeAll()
-            messages.append(
-                ChatMessage(
-                    content:
-                        "Model \(identifier.displayName) loaded. Hello! How can I help?",
-                    isUserMessage: false
-                )
-            )
-
+            let user = try? RealmService.shared.getUser()
+            let userName = user?.firstName ?? "User"
+            modelInitStatus = .loaded(userName: userName)
         } catch {
             let loadErrorMessage =
                 "Error initializing \(identifier.displayName): \(error.localizedDescription)"
             NSLog(loadErrorMessage)
-            messages.removeAll()
-            messages.append(
-                ChatMessage(content: loadErrorMessage, isUserMessage: false)
-            )
-            criticalError = loadErrorMessage
+            modelInitStatus = .failed(modelName: identifier.displayName)
         }
 
         isModelLoading = false
@@ -138,11 +147,12 @@ class ChatViewModel: ObservableObject {
     }
 
     // MARK: - Realm Integration
-    public func loadInitialData(sessionId: UUID?) async{
+    public func loadInitialData(sessionId: UUID?) async {
         if let id = sessionId {
             do {
-                if let session = try await RealmService.shared.getChatSession(by: id)
-                {
+                if let session = try RealmService.shared.getChatSession(
+                    by: id
+                ) {
                     loadSession(session)
                     return
                 }
@@ -150,7 +160,12 @@ class ChatViewModel: ObservableObject {
                 print("Error finding session by ID: \(error)")
             }
         } else {
-            createNewChatSession()
+            self.currentSession = nil
+            self.messages = []
+            Task {
+                try? await self.currentChat?.resetConversation()
+            }
+            self.needsContextInjection = false
         }
     }
 
@@ -191,6 +206,16 @@ class ChatViewModel: ObservableObject {
     }
 
     private func saveMessageToDatabase(_ message: ChatMessage) {
+        if currentSession == nil {
+            do {
+                let newSession = try RealmService.shared.createNewChatSession()
+                self.currentSession = newSession
+            } catch {
+                print("Error creating new session: \(error)")
+                return
+            }
+        }
+
         guard let session = currentSession else { return }
 
         do {
@@ -199,6 +224,32 @@ class ChatViewModel: ObservableObject {
         } catch {
             print("Error saving message: \(error)")
         }
+    }
+
+    private func sanitizeLLMOutput(_ text: String) -> String {
+        var cleaned = text.replacingOccurrences(of: "[multimodal]", with: "")
+        
+        // Define patterns for special tokens to be stripped.
+        // This includes:
+        // - <pad>, <bos>, <eos>
+        // - <unusedX> (where X is any digits)
+        // - <maskX>
+        // - Any tags containing '|' (e.g. <|tool_call|>, <tool_call|>, <|tool_call>, etc.)
+        // - Any tags starting with <tool or <mask
+        let pattern = "(?i)<(?:pad|bos|eos|unused\\d+|mask\\d*|[^>]*\\|[^>]*|\\/?tool[^>]*|\\/?mask[^>]*)>"
+        
+        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+            let range = NSRange(cleaned.startIndex..<cleaned.endIndex, in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, options: [], range: range, withTemplate: "")
+        }
+        
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func estimateTokens(for text: String) -> Int {
+        let isNonAscii = text.contains { !$0.isASCII }
+        let divisor = isNonAscii ? 1.8 : 3.5
+        return Int(Double(text.count) / divisor)
     }
 
     // Send a message from the user to the LLM
@@ -210,8 +261,17 @@ class ChatViewModel: ObservableObject {
                 || imageToSend != nil
         else { return }
 
+        // Trim input text if it is exceptionally long to avoid native layer crash (max 1600 characters)
+        var sanitizedText = text
+        let estimatedPromptTokens = estimateTokens(for: text)
+        if estimatedPromptTokens > 900 {
+            let safeCharLimit = 1600
+            sanitizedText = String(text.prefix(safeCharLimit)) + "\n[Message truncated to prevent memory overload]"
+            NSLog("User message exceeded token limit (~ \(estimatedPromptTokens) tokens). Trimmed to 1600 characters to prevent crash.")
+        }
+
         let userMessage = ChatMessage(
-            content: text,
+            content: sanitizedText,
             isUserMessage: true,
             uiImage: imageToSend
         )
@@ -259,10 +319,10 @@ class ChatViewModel: ObservableObject {
                 let imageData = imageToSend?.jpegData(compressionQuality: 0.8)
 
                 // Auto-reset conversation when context gets too long to prevent slow prefill.
-                // Estimate total tokens from all messages (rough: 1 token ≈ 4 chars).
-                let totalChars = messages.reduce(0) { $0 + $1.content.count }
-                let estimatedTokens = totalChars / 4
-                let contextThreshold = 800  // Reset before hitting maxNumTokens (1024)
+                // Estimate total tokens from all messages using our multilingual estimator.
+                let totalText = messages.map { $0.content }.joined(separator: "\n")
+                let estimatedTokens = self.estimateTokens(for: totalText)
+                let contextThreshold = 750  // Reset before hitting maxNumTokens (1024)
 
                 if estimatedTokens > contextThreshold {
                     NSLog(
@@ -271,7 +331,9 @@ class ChatViewModel: ObservableObject {
                     do {
                         try await chat.resetConversation()
                         self.needsContextInjection = true
-                        NSLog("Conversation reset successfully and context injection queued.")
+                        NSLog(
+                            "Conversation reset successfully and context injection queued."
+                        )
                     } catch {
                         NSLog(
                             "Warning: Failed to reset conversation: \(error.localizedDescription)"
@@ -280,29 +342,56 @@ class ChatViewModel: ObservableObject {
                 }
 
                 // Context Injection: if this is the first message in a loaded session, inject history
-                var textToSend = text
+                var textToSend = sanitizedText
                 if self.needsContextInjection && messages.count > 1 {
-                    let historyMsgs = messages.dropLast().suffix(4)  // Last 4 messages before this new one
+                    let historyMsgs = Array(messages.dropLast().suffix(4))  // Last 4 messages
                     if !historyMsgs.isEmpty {
-                        var historyStr =
-                            "Here is the recent conversation history for context:\n"
-                        for msg in historyMsgs {
+                        var historyParts: [String] = []
+                        var currentHistoryTokens = 0
+                        // Reserve 450 tokens for the new message + safety buffer
+                        let maxHistoryTokens = 1024 - 450
+                        
+                        for msg in historyMsgs.reversed() {
                             let role = msg.isUserMessage ? "User" : "Model"
-                            historyStr += "\(role): \(msg.content)\n"
+                            let msgText = "\(role): \(msg.content)\n"
+                            let msgTokens = self.estimateTokens(for: msgText)
+                            
+                            if currentHistoryTokens + msgTokens <= maxHistoryTokens {
+                                historyParts.insert(msgText, at: 0) // Prepend to keep chronological order
+                                currentHistoryTokens += msgTokens
+                            } else {
+                                break // Stop adding older history to stay within token budget
+                            }
                         }
-                        historyStr +=
-                            "---\nPlease continue the conversation and respond to this new prompt:\n\(text)"
-                        textToSend = historyStr
-                        NSLog(
-                            "Injected \(historyMsgs.count) messages of history into context."
-                        )
+                        
+                        if !historyParts.isEmpty {
+                            var historyStr = "Here is the recent conversation history for context:\n"
+                            historyStr += historyParts.joined()
+                            historyStr += "---\nPlease continue the conversation and respond to this new prompt:\n\(sanitizedText)"
+                            
+                            // Verify the overall constructed prompt is safe (under 900 tokens)
+                            let totalPromptTokens = self.estimateTokens(for: historyStr)
+                            if totalPromptTokens < 900 {
+                                textToSend = historyStr
+                                NSLog("Injected \(historyParts.count) messages of history into context (~ \(currentHistoryTokens) tokens).")
+                            } else {
+                                NSLog("Constructed history prompt is too large (\(totalPromptTokens) tokens). Skipping history injection to prevent crash.")
+                            }
+                        }
                     }
                     self.needsContextInjection = false
                 }
 
+                // Only pass image data if the model supports vision to prevent native layer crash
+                let supportedImageData = self.currentOnDeviceModel?.isVisionAvailable == true ? imageData : nil
+                
+                if imageData != nil && supportedImageData == nil {
+                    NSLog("Warning: Image was attached but the current model does not support vision. The image will be ignored by the model.")
+                }
+
                 let stream = try await chat.sendMessage(
                     textToSend,
-                    imageData: imageData
+                    imageData: supportedImageData
                 )
                 var fullResponse = ""
 
@@ -313,9 +402,10 @@ class ChatViewModel: ObservableObject {
                     // Update the placeholder message with the accumulated response
                     if responseIndex < messages.count {
                         let existingMsg = messages[responseIndex]
+                        let sanitized = sanitizeLLMOutput(fullResponse)
                         messages[responseIndex] = ChatMessage(
                             id: existingMsg.id,
-                            content: fullResponse,
+                            content: sanitized.isEmpty ? "..." : sanitized,
                             isUserMessage: false,
                             timestamp: existingMsg.timestamp
                         )
@@ -323,6 +413,13 @@ class ChatViewModel: ObservableObject {
                 }
 
                 if responseIndex < messages.count {
+                    let finalSanitized = sanitizeLLMOutput(fullResponse)
+                    messages[responseIndex] = ChatMessage(
+                        id: messages[responseIndex].id,
+                        content: finalSanitized.isEmpty ? "..." : finalSanitized,
+                        isUserMessage: false,
+                        timestamp: messages[responseIndex].timestamp
+                    )
                     self.saveMessageToDatabase(messages[responseIndex])
                 }
 
@@ -356,11 +453,6 @@ class ChatViewModel: ObservableObject {
 
     func clearSelectedImage() {
         self.selectedUIImage = nil
-    }
-
-    // MARK: - Chat Management
-    func clearChat() {
-        createNewChatSession()
     }
 
     // MARK: - Model Switching
@@ -442,6 +534,30 @@ class ChatViewModel: ObservableObject {
                         isUserMessage: false
                     )
                 )
+            }
+        }
+    }
+
+    public func deleteCurrentSession() {
+        guard let session = currentSession else { return }
+        do {
+            try RealmService.shared.deleteChatSession(by: session.id)
+            self.currentSession = nil
+            self.messages = []
+        } catch {
+            print("Error deleting current session: \(error)")
+        }
+    }
+
+    public func toggleSpeechRecording() {
+        if speechRecognizer.isRecording {
+            speechRecognizer.stopTranscribing()
+        } else {
+            SpeechRecognizer.requestPermission { [weak self] authorized in
+                guard let self = self, authorized else { return }
+                self.speechRecognizer.startTranscribing { text in
+                    self.inputText = text
+                }
             }
         }
     }

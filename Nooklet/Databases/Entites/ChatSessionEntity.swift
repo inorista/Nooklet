@@ -3,12 +3,12 @@ import RealmSwift
 
 class ChatSessionEntity: Object, ObjectKeyIdentifiable {
     @Persisted(primaryKey: true) var id: UUID = UUID()
-    @Persisted var title: String = "Chat mới"
+    @Persisted var title: String = "New chat"
     @Persisted var createdAt: Date = Date()
     @Persisted var updatedAt: Date = Date()
     @Persisted var messages: List<ChatMessageEntity>
 
-    convenience init(title: String = "Chat mới") {
+    convenience init(title: String = "New chat") {
         self.init()
         self.id = UUID()
         self.title = title

@@ -50,7 +50,7 @@ struct OnDeviceModel {
 
     init(modelIdentifier: ModelIdentifier) async throws {
         self.identifier = modelIdentifier
-        self.isVisionAvailable = false
+        self.isVisionAvailable = true
         var metrics = LlmMetrics()
         
         let fileManager = FileManager.default
@@ -93,7 +93,7 @@ struct OnDeviceModel {
         // maxNumTokens: 1024 is the safe limit for Gemma 2B on iOS GPU.
         // Higher values (e.g. 2048) cause DYNAMIC_UPDATE_SLICE failures because the
         // KV-cache tensors exceed the device's GPU memory budget.
-        let maxTokens = 1024
+        let maxTokens = 1100
 
         #if targetEnvironment(simulator)
         let preferredBackend = Backend.cpu()
@@ -112,7 +112,7 @@ struct OnDeviceModel {
             let config = try EngineConfig(
                 modelPath: modelCopyPath.path,
                 backend: preferredBackend,
-                visionBackend: .cpu(),
+                visionBackend: isVisionAvailable ? .cpu() : nil,
                 maxNumTokens: maxTokens,
                 cacheDir: modelDir.path
             )
@@ -130,7 +130,7 @@ struct OnDeviceModel {
             let cpuConfig = try EngineConfig(
                 modelPath: modelCopyPath.path,
                 backend: Backend.cpu(),
-                visionBackend: .cpu(),
+                visionBackend: isVisionAvailable ? .cpu() : nil,
                 maxNumTokens: maxTokens,
                 cacheDir: modelDir.path
             )

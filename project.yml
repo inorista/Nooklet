@@ -64,6 +64,8 @@ targets:
         CFBundleDisplayName: Nooklet
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: "Microphone access is required to capture speech for on-device transcription."
+        NSSpeechRecognitionUsageDescription: "Speech recognition access is required to dictate message input."
+        NSCameraUsageDescription: "Camera access is required to capture photos for multimodal chat input."
         UIBackgroundModes:
           - audio
           - fetch

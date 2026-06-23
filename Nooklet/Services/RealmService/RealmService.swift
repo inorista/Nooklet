@@ -37,7 +37,7 @@ class RealmService {
             session.messages.append(message)
             session.updatedAt = Date()
 
-            if session.messages.count == 1 || session.title == "Chat mới" {
+            if session.messages.count == 1 || session.title == "New chat" {
                 let limit = min(message.content.count, 20)
                 let index = message.content.index(
                     message.content.startIndex,
@@ -63,8 +63,18 @@ class RealmService {
         return result
     }
 
-    func getChatSession(by id: UUID) async throws -> ChatSessionEntity? {
-        let realm = try await Realm()
+    func getChatSession(by id: UUID) throws -> ChatSessionEntity? {
+        let realm = try Realm()
         return realm.object(ofType: ChatSessionEntity.self, forPrimaryKey: id)
+    }
+
+    func deleteChatSession(by id: UUID) throws {
+        let realm = try Realm()
+        if let session = realm.object(ofType: ChatSessionEntity.self, forPrimaryKey: id) {
+            try realm.write {
+                realm.delete(session.messages)
+                realm.delete(session)
+            }
+        }
     }
 }

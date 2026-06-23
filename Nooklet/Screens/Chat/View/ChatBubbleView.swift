@@ -25,7 +25,7 @@ struct ChatBubbleView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 
     // MARK: - User Bubble
@@ -36,71 +36,161 @@ struct ChatBubbleView: View {
                 Image(uiImage: uiImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(maxWidth: 200, maxHeight: 200)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .frame(maxWidth: 240, maxHeight: 240)
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+                    .shadow(
+                        color: Color.black.opacity(0.2),
+                        radius: 8,
+                        x: 0,
+                        y: 4
+                    )
             }
 
             if !message.content.isEmpty {
                 Text(message.content)
-                    .font(.subheadline)
-                    .foregroundStyle(Color(.buttonContent))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                     .background(
-                        Color(.button),
-                        in: RoundedRectangle(cornerRadius: 18)
+                        LinearGradient(
+                            colors: [
+                                Color.blue,
+                                Color(red: 0.35, green: 0.3, blue: 0.9),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(
+                            cornerRadius: 20,
+                            style: .continuous
+                        )
+                    )
+                    .shadow(
+                        color: Color.blue.opacity(0.15),
+                        radius: 6,
+                        x: 0,
+                        y: 3
                     )
             }
             Text(message.timestamp, style: .time)
-                .font(.caption2)
-                .foregroundStyle(Color(.subContent).opacity(0.6))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.white.opacity(0.4))
+                .padding(.horizontal, 4)
         }
     }
 
     // MARK: - AI Bubble
 
     private var aiBubble: some View {
+
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(.nooklet)
-                    .resizable()
-                    .frame(width: 16, height: 16)
-                    .scaledToFit()
-
-                Text("Nooklet")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color(.content).opacity(0.7))
-            }
-
-            if isLastAIMessage && isThinking && message.content == "thinking..." {
+            if isLastAIMessage && isThinking && message.content == "thinking..."
+            {
                 ThinkingIndicatorView()
             } else {
                 if let uiImage = message.uiImage {
                     Image(uiImage: uiImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: 200, maxHeight: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .frame(maxWidth: 240, maxHeight: 240)
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius: 20,
+                                style: .continuous
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(
+                                cornerRadius: 20,
+                                style: .continuous
+                            )
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        )
+                        .shadow(
+                            color: Color.black.opacity(0.2),
+                            radius: 8,
+                            x: 0,
+                            y: 4
+                        )
                 }
                 if !message.content.isEmpty {
-                    Text(message.content)
-                        .font(.subheadline)
-                        .foregroundStyle(Color(.content))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            Color(.surface).opacity(0.6),
-                            in: RoundedRectangle(cornerRadius: 18)
+                    VStack(alignment: .leading, spacing: 14) {
+                        ZStack(alignment: .bottomTrailing) {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.blue.opacity(0.1),
+                                            Color.purple.opacity(0.15),
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 36, height: 36)
+                                .overlay(
+                                    Circle().stroke(
+                                        Color.white.opacity(0.1),
+                                        lineWidth: 1
+                                    )
+                                )
+
+                            Image(.nooklet)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 22, height: 22)
+                                .position(x: 18, y: 18)
+                        }
+                        .frame(width: 36, height: 36)
+
+                        Text(message.content)
+                            .font(
+                                .system(
+                                    size: 15,
+                                    weight: .medium,
+                                    design: .rounded
+                                )
+                            )
+                            .foregroundStyle(.white)
+                            .lineSpacing(4)
+                            .textSelection(.enabled)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color.white.opacity(0.04))
+                    .background(.ultraThinMaterial)
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: 20,
+                            style: .continuous
                         )
-                        .textSelection(.enabled)
+                    )
+                    .overlay(
+                        RoundedRectangle(
+                            cornerRadius: 20,
+                            style: .continuous
+                        )
+                        .strokeBorder(
+                            Color.white.opacity(0.08),
+                            lineWidth: 1
+                        )
+                    )
                 }
             }
 
             Text(message.timestamp, style: .time)
-                .font(.caption2)
-                .foregroundStyle(Color(.subContent).opacity(0.6))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.white.opacity(0.3))
+                .padding(.horizontal, 4)
         }
+
     }
 }
 
@@ -110,19 +200,28 @@ struct ThinkingIndicatorView: View {
     @State private var dotOffset: [CGFloat] = [0, 0, 0]
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 6) {
             ForEach(0..<3, id: \.self) { index in
                 Circle()
-                    .fill(Color(.info).opacity(0.7))
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.blue, Color.purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 8, height: 8)
                     .offset(y: dotOffset[index])
             }
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 20)
         .padding(.vertical, 14)
-        .background(
-            Color(.surface).opacity(0.6),
-            in: RoundedRectangle(cornerRadius: 18)
+        .background(Color.white.opacity(0.04))
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
         )
         .onAppear {
             animateDots()
