@@ -37,7 +37,7 @@ struct SplashScreenView: View {
                 logoOpacity = 1.0
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3  ) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 coordinator.onSplashFinished()
             }
         }

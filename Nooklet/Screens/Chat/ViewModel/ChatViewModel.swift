@@ -270,7 +270,8 @@ class ChatViewModel: ObservableObject {
                     )
                     do {
                         try await chat.resetConversation()
-                        NSLog("Conversation reset successfully.")
+                        self.needsContextInjection = true
+                        NSLog("Conversation reset successfully and context injection queued.")
                     } catch {
                         NSLog(
                             "Warning: Failed to reset conversation: \(error.localizedDescription)"

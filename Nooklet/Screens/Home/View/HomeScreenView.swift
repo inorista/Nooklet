@@ -56,7 +56,7 @@ struct HomeScreenView: View {
                     )
                 Spacer()
                 Button {
-
+                    coordinator.push(.chatHistory)
                 } label: {
                     Image(
                         systemName: "arrow.forward"
