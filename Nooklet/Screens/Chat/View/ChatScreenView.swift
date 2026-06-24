@@ -71,7 +71,6 @@ struct ChatScreenView: View {
     }
 
     // MARK: - Chat Body Content
-
     @ViewBuilder
     func ChatBodyContent() -> some View {
         switch viewModel.modelInitStatus {
@@ -158,186 +157,186 @@ struct ChatScreenView: View {
 
         case .loaded:
             if viewModel.messages.isEmpty {
-                VStack(spacing: 40) {
-                    Spacer()
+                ScrollView {
+                    VStack(spacing: 40) {
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.15))
+                                .frame(width: 130, height: 130)
+                                .scaleEffect(animatePulse ? 1.15 : 0.95)
+                                .blur(radius: 15)
 
-                    // Pulsing breathing logo
-                    ZStack {
-                        Circle()
-                            .fill(Color.blue.opacity(0.15))
-                            .frame(width: 130, height: 130)
-                            .scaleEffect(animatePulse ? 1.15 : 0.95)
-                            .blur(radius: 15)
-
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.blue.opacity(0.1),
-                                        Color.purple.opacity(0.2),
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 110, height: 110)
-                            .overlay(
-                                Circle()
-                                    .stroke(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.blue.opacity(0.4),
-                                                Color.purple.opacity(0.1),
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        ),
-                                        lineWidth: 1.5
-                                    )
-                            )
-
-                        Image(.nooklet)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 64, height: 64)
-                            .shadow(color: .blue.opacity(0.5), radius: 10)
-                    }
-                    .onAppear {
-                        withAnimation(
-                            .easeInOut(duration: 2.0).repeatForever(
-                                autoreverses: true
-                            )
-                        ) {
-                            animatePulse = true
-                        }
-                    }
-
-                    // Welcome Title
-                    VStack(spacing: 8) {
-                        Text("Nooklet Studio")
-                            .font(
-                                .system(
-                                    size: 32,
-                                    weight: .black,
-                                    design: .rounded
-                                )
-                            )
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.white, .white.opacity(0.7)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-
-                        Text("ON-DEVICE AI • SECURE & PRIVATE")
-                            .font(.system(size: 11, weight: .bold))
-                            .tracking(2.0)
-                            .foregroundStyle(Color.blue)
-
-                        Text(
-                            "Your messages are compiled and generated locally using Gemma 4 (2B)"
-                        )
-                        .lineLimit(2)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color(.subContent).opacity(0.7))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                        .padding(.top, 4)
-                        .lineSpacing(4)
-                    }
-
-                    // Dynamic Suggestion Cards
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("GET STARTED")
-                            .font(.system(size: 11, weight: .bold))
-                            .tracking(2.0)
-                            .foregroundStyle(.white.opacity(0.4))
-                            .padding(.leading, 8)
-
-                        let suggestions = [
-                            (
-                                "sparkles", "Offline assistant",
-                                "Brainstorm ideas, rewrite text, or ask general questions locally."
-                            ),
-                            (
-                                "bubble.left.and.bubble.right.fill",
-                                "Practice language",
-                                "Say something in English/Vietnamese to translate or practice."
-                            ),
-                        ]
-
-                        ForEach(suggestions, id: \.1) { icon, title, desc in
-                            Button {
-                                UIImpactFeedbackGenerator(style: .light)
-                                    .impactOccurred()
-                                viewModel.inputText = title
-                            } label: {
-                                HStack(alignment: .top, spacing: 14) {
-                                    Image(systemName: icon)
-                                        .font(.system(size: 16, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .frame(width: 36, height: 36)
-                                        .background(
-                                            Color.white.opacity(0.08),
-                                            in: Circle()
-                                        )
-                                        .overlay(
-                                            Circle().stroke(
-                                                Color.white.opacity(0.1),
-                                                lineWidth: 1
-                                            )
-                                        )
-
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(title)
-                                            .font(
-                                                .system(
-                                                    size: 14,
-                                                    weight: .bold,
-                                                    design: .rounded
-                                                )
-                                            )
-                                            .foregroundStyle(.white)
-                                        Text(desc)
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(
-                                                .white.opacity(0.4)
-                                            )
-                                            .multilineTextAlignment(.leading)
-                                            .lineLimit(2)
-                                    }
-                                    Spacer(minLength: 0)
-                                }
-                                .padding(14)
-                                .background(Color.white.opacity(0.03))
-                                .background(.ultraThinMaterial)
-                                .clipShape(
-                                    RoundedRectangle(
-                                        cornerRadius: 18,
-                                        style: .continuous
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.blue.opacity(0.1),
+                                            Color.purple.opacity(0.2),
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
                                     )
                                 )
+                                .frame(width: 110, height: 110)
                                 .overlay(
-                                    RoundedRectangle(
-                                        cornerRadius: 18,
-                                        style: .continuous
-                                    )
-                                    .strokeBorder(
-                                        Color.white.opacity(0.05),
-                                        lineWidth: 1
+                                    Circle()
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.blue.opacity(0.4),
+                                                    Color.purple.opacity(0.1),
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1.5
+                                        )
+                                )
+
+                            Image(.nooklet)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 64, height: 64)
+                                .shadow(color: .blue.opacity(0.5), radius: 10)
+                        }
+                        .onAppear {
+                            withAnimation(
+                                .easeInOut(duration: 2.0).repeatForever(
+                                    autoreverses: true
+                                )
+                            ) {
+                                animatePulse = true
+                            }
+                        }
+
+                        // Welcome Title
+                        VStack(spacing: 8) {
+                            Text("Nooklet Studio")
+                                .font(
+                                    .system(
+                                        size: 32,
+                                        weight: .black,
+                                        design: .rounded
                                     )
                                 )
-                            }
-                            .buttonStyle(BouncyCardStyle())
-                        }
-                    }
-                    .padding(.horizontal, 24)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.white, .white.opacity(0.7)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
 
-                    Spacer()
+                            Text("ON-DEVICE AI")
+                                .font(.system(size: 11, weight: .bold))
+                                .tracking(2.0)
+                                .foregroundStyle(Color.blue)
+
+                            Text(
+                                "Your messages are compiled and generated locally using Gemma 4 (2B)"
+                            )
+                            .lineLimit(2)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Color(.subContent).opacity(0.7))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                            .padding(.top, 4)
+                            .lineSpacing(4)
+                        }
+
+                        //                    // Dynamic Suggestion Cards
+                        //                    VStack(alignment: .leading, spacing: 12) {
+                        //                        Text("GET STARTED")
+                        //                            .font(.system(size: 11, weight: .bold))
+                        //                            .tracking(2.0)
+                        //                            .foregroundStyle(.white.opacity(0.4))
+                        //                            .padding(.leading, 8)
+                        //
+                        //                        let suggestions = [
+                        //                            (
+                        //                                "sparkles", "Offline assistant",
+                        //                                "Brainstorm ideas, rewrite text, or ask general questions locally."
+                        //                            ),
+                        //                            (
+                        //                                "bubble.left.and.bubble.right.fill",
+                        //                                "Practice language",
+                        //                                "Say something in English/Vietnamese to translate or practice."
+                        //                            ),
+                        //                        ]
+                        //
+                        //                        ForEach(suggestions, id: \.1) { icon, title, desc in
+                        //                            Button {
+                        //                                UIImpactFeedbackGenerator(style: .light)
+                        //                                    .impactOccurred()
+                        //                                viewModel.inputText = title
+                        //                            } label: {
+                        //                                HStack(alignment: .top, spacing: 14) {
+                        //                                    Image(systemName: icon)
+                        //                                        .font(.system(size: 16, weight: .bold))
+                        //                                        .foregroundStyle(.white)
+                        //                                        .frame(width: 36, height: 36)
+                        //                                        .background(
+                        //                                            Color.white.opacity(0.08),
+                        //                                            in: Circle()
+                        //                                        )
+                        //                                        .overlay(
+                        //                                            Circle().stroke(
+                        //                                                Color.white.opacity(0.1),
+                        //                                                lineWidth: 1
+                        //                                            )
+                        //                                        )
+                        //
+                        //                                    VStack(alignment: .leading, spacing: 3) {
+                        //                                        Text(title)
+                        //                                            .font(
+                        //                                                .system(
+                        //                                                    size: 14,
+                        //                                                    weight: .bold,
+                        //                                                    design: .rounded
+                        //                                                )
+                        //                                            )
+                        //                                            .foregroundStyle(.white)
+                        //                                        Text(desc)
+                        //                                            .font(.system(size: 12))
+                        //                                            .foregroundStyle(
+                        //                                                .white.opacity(0.4)
+                        //                                            )
+                        //                                            .multilineTextAlignment(.leading)
+                        //                                            .lineLimit(2)
+                        //                                    }
+                        //                                    Spacer(minLength: 0)
+                        //                                }
+                        //                                .padding(14)
+                        //                                .background(Color.white.opacity(0.03))
+                        //                                .background(.ultraThinMaterial)
+                        //                                .clipShape(
+                        //                                    RoundedRectangle(
+                        //                                        cornerRadius: 18,
+                        //                                        style: .continuous
+                        //                                    )
+                        //                                )
+                        //                                .overlay(
+                        //                                    RoundedRectangle(
+                        //                                        cornerRadius: 18,
+                        //                                        style: .continuous
+                        //                                    )
+                        //                                    .strokeBorder(
+                        //                                        Color.white.opacity(0.05),
+                        //                                        lineWidth: 1
+                        //                                    )
+                        //                                )
+                        //                            }
+                        //                            .buttonStyle(BouncyCardStyle())
+                        //                        }
+                        //                    }
+                        //                    .padding(.horizontal, 24)
+
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.bottom, 140)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.bottom, 140)
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {

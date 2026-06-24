@@ -1,5 +1,5 @@
-import Foundation
 import AVFoundation
+import Foundation
 
 final class AudioPlayer: NSObject, AVAudioPlayerDelegate {
     private var player: AVAudioPlayer?
@@ -19,12 +19,38 @@ final class AudioPlayer: NSObject, AVAudioPlayerDelegate {
         }
     }
 
+    func playFromBundle(fileName: String) {
+        guard
+            let url = Bundle.main.url(
+                forResource: fileName,
+                withExtension: "wav"
+            )
+        else {
+            print("Erreo: can not found file \(fileName).wav in Bundle.")
+            return
+        }
+
+        do {
+            player = try AVAudioPlayer(contentsOf: url)
+            player?.prepareToPlay()
+            player?.play()
+
+        } catch let error {
+            print(
+                "Error while reading audio file: \(error.localizedDescription)"
+            )
+        }
+    }
+
     func stop() {
         player?.stop()
         player = nil
     }
 
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+    func audioPlayerDidFinishPlaying(
+        _ player: AVAudioPlayer,
+        successfully flag: Bool
+    ) {
         onFinish?()
     }
 }

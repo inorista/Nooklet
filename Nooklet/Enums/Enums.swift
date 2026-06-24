@@ -8,7 +8,7 @@ import Foundation
 
 enum AppTab: String, CaseIterable {
     case home = "Home"
-    case speech = "Speech"
+    case explore = "Explore"
     case setting = "Setting"
 
 
@@ -16,8 +16,8 @@ enum AppTab: String, CaseIterable {
         return switch self {
         case .home:
             isActive ? "HomeActive" : "HomeInactive"
-        case .speech:
-            isActive ? "SpeechActive" : "SpeechInactive"
+        case .explore:
+            isActive ? "ExploreActive" : "ExploreInactive"
         case .setting:
             isActive ? "SettingActive" : "SettingInactive"
         }

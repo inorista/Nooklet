@@ -2,7 +2,35 @@ import Foundation
 import OnnxRuntimeBindings
 
 final class SupertonicService {
-    enum Voice { case male, female }
+    enum Voice: String, CaseIterable, Identifiable {
+        case f1 = "Sarah"
+        case f2 = "Lily"
+        case f3 = "Jessica"
+        case f4 = "Olivia"
+        case f5 = "Emily"
+        case m1 = "Alex"
+        case m2 = "James"
+        case m3 = "Robert"
+        case m4 = "Sam"
+        case m5 = "Daniel"
+
+        var id: Self { self }
+
+        var fileName: String {
+            switch self {
+            case .f1: return "F1"
+            case .f2: return "F2"
+            case .f3: return "F3"
+            case .f4: return "F4"
+            case .f5: return "F5"
+            case .m1: return "M1"
+            case .m2: return "M2"
+            case .m3: return "M3"
+            case .m4: return "M4"
+            case .m5: return "M5"
+            }
+        }
+    }
     enum Language: String, CaseIterable {
         case en = "en"
         case ko = "ko"
@@ -139,8 +167,8 @@ final class SupertonicService {
     }
 
     private static func locateVoiceStyleURL(voice: Voice) throws -> URL {
-        // Prefer M1/F1 defaults; search common subdirectories
-        let fileName = (voice == .male) ? "M1" : "F1"
+        // Prefer selected voice; search common subdirectories
+        let fileName = voice.fileName
         let bundle = Bundle.main
         let candidates: [URL?] = [
             bundle.url(forResource: fileName, withExtension: "json", subdirectory: "voice_styles"),

@@ -12,7 +12,7 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: "LWFZTJ6Z3B"
     CODE_SIGN_STYLE: Automatic
-    TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad
+    TARGETED_DEVICE_FAMILY: "1"  # iPhone only
 
 packages:
   LiteRTLM:

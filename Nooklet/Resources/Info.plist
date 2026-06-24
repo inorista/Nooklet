@@ -22,12 +22,12 @@
 	<string>1</string>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is required to capture photos for multimodal chat input.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Microphone access is required to capture speech for on-device transcription.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Speech recognition access is required to dictate message input.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Camera access is required to capture photos for multimodal chat input.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

@@ -13,6 +13,26 @@ class RealmService {
         }
     }
 
+    func updateUser(_ userModel: User) throws {
+        let realm = try Realm()
+        if let existingUser = realm.object(ofType: UserEntity.self, forPrimaryKey: userModel.id) {
+            try realm.write {
+                existingUser.firstName = userModel.firstName
+                existingUser.lastName = userModel.lastName
+                existingUser.birthDay = userModel.birthDay
+                if let imageData = userModel.imageData {
+                    existingUser.imageData = imageData
+                }
+            }
+        } else {
+            // Fallback to saving if it doesn't exist for some reason
+            let newEntity = userModel.toEntity()
+            try realm.write {
+                realm.add(newEntity)
+            }
+        }
+    }
+
     func getUser() throws -> UserEntity? {
         let realm = try Realm()
         let user = realm.objects(UserEntity.self).first

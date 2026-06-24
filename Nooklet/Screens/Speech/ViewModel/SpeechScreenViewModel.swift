@@ -5,8 +5,8 @@ import Foundation
 final class SpeechScreenViewModel: ObservableObject {
     @Published var text: String =
         "Hi there, I'm Nooklet! Drop your text here, and let me bring it to life with voice."
-    @Published var nfe: Double = 8
-    @Published var voice: SupertonicService.Voice = .male
+    @Published var nfe: Double = 9
+    @Published var voice: SupertonicService.Voice = .f1
     @Published var language: SupertonicService.Language = .en
     @Published var isGenerating: Bool = false
     @Published var isPlaying: Bool = false

@@ -24,17 +24,17 @@ struct DashboardScreenView: View {
                     }
                     .tag(AppTab.home)
 
-                SpeechScreenView()
+                ExploreScreenView()
                     .toolbarBackground(.visible, for: .tabBar)
                     .toolbarBackground(.ultraThinMaterial, for: .tabBar)
                     .tabItem {
                         Image(
-                            AppTab.speech.imageName(isActive: activeTab == .speech)
+                            AppTab.explore.imageName(isActive: activeTab == .explore)
                         )
                     }
-                    .tag(AppTab.speech)
+                    .tag(AppTab.explore)
 
-                Text("Settings Screen")
+                SettingScreenView()
                     .toolbarBackground(.visible, for: .tabBar)
                     .toolbarBackground(.ultraThinMaterial, for: .tabBar)
                     .tabItem {
@@ -52,7 +52,7 @@ struct DashboardScreenView: View {
                 case .speech:
                     SpeechScreenView()
                 case .settings:
-                    Text("Settings Screen")
+                    SettingScreenView()
                 case .chat(let sessionId):
                     ChatScreenView(sessionId: sessionId)
                 case .chatHistory:
