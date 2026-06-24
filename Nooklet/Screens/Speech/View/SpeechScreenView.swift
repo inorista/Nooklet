@@ -8,7 +8,7 @@ struct SpeechScreenView: View {
             CinematicBackground()
             VStack(spacing: 24) {
                 // Header
-                Text("Supertonic")
+                Text("Nooklet - Supertonic")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .tracking(1.5)
                     .foregroundStyle(

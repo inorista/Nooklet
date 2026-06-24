@@ -38,4 +38,5 @@ __pycache__/
 *.litertlm
 onnx/**
 Nooklet/Helpers/onnx
+*.onnx
 
