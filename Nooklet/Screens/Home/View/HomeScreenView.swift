@@ -11,7 +11,6 @@ struct HomeScreenView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @StateObject private var viewModel = HomeViewModel()
     @State private var isNewChatPressed = false
-    @State private var animateBackground = false
     @State private var animateAvatarPulse = false
     @State private var animateDotPulse = false
 
@@ -37,6 +36,18 @@ struct HomeScreenView: View {
             await viewModel.initData()
         }
         .preferredColorScheme(.dark)
+        .onAppear {
+            withAnimation(
+                .easeOut(duration: 2.0).repeatForever(autoreverses: false)
+            ) {
+                animateAvatarPulse = true
+            }
+            withAnimation(
+                .easeInOut(duration: 1.5).repeatForever(autoreverses: true)
+            ) {
+                animateDotPulse = true
+            }
+        }
     }
 
     // MARK: - Greeting User
@@ -205,14 +216,6 @@ struct HomeScreenView: View {
                     Image(systemName: "cpu.fill")
                         .font(.system(size: 18))
                         .foregroundStyle(.white.opacity(0.8))
-
-                    Spacer()
-
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
-                        .shadow(color: .green, radius: 4)
-                        .opacity(animateDotPulse ? 1.0 : 0.5)
                 }
                 .padding(.bottom, 16)
 
@@ -251,25 +254,17 @@ struct HomeScreenView: View {
                     Image(systemName: "waveform")
                         .font(.system(size: 18))
                         .foregroundStyle(.white.opacity(0.8))
-
-                    Spacer()
-
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 6, height: 6)
-                        .shadow(color: .blue, radius: 4)
-                        .scaleEffect(animateDotPulse ? 1.1 : 0.9)
                 }
                 .padding(.bottom, 16)
 
-                Text("Speech ASR")
+                Text("Text-to-Speech")
                     .font(
                         .system(size: 12, weight: .semibold, design: .rounded)
                     )
                     .foregroundStyle(.white.opacity(0.5))
                     .padding(.bottom, 2)
 
-                Text("Nemotron 3.5")
+                Text("Supertonic")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
             }
@@ -419,63 +414,7 @@ struct HomeScreenView: View {
         }
     }
 
-    // MARK: - Cinematic Background
-    @ViewBuilder
-    func CinematicBackground() -> some View {
-        ZStack {
-            Color(red: 0.03, green: 0.03, blue: 0.05)  // Deep premium dark background
 
-            GeometryReader { geo in
-                ZStack {
-                    Circle()
-                        .fill(Color.blue.opacity(animateBackground ? 0.2 : 0.1))
-                        .frame(width: geo.size.width * 1.2)
-                        .blur(radius: 120)
-                        .offset(
-                            x: animateBackground
-                                ? -geo.size.width * 0.2 : -geo.size.width * 0.4,
-                            y: animateBackground
-                                ? -geo.size.height * 0.1
-                                : -geo.size.height * 0.2
-                        )
-
-                    Circle()
-                        .fill(
-                            Color.purple.opacity(
-                                animateBackground ? 0.15 : 0.05
-                            )
-                        )
-                        .frame(width: geo.size.width)
-                        .blur(radius: 100)
-                        .offset(
-                            x: animateBackground
-                                ? geo.size.width * 0.3 : geo.size.width * 0.5,
-                            y: animateBackground
-                                ? geo.size.height * 0.3 : geo.size.height * 0.4
-                        )
-                }
-            }
-            .drawingGroup()
-        }
-        .ignoresSafeArea()
-        .onAppear {
-            withAnimation(
-                .easeInOut(duration: 8.0).repeatForever(autoreverses: true)
-            ) {
-                animateBackground = true
-            }
-            withAnimation(
-                .easeOut(duration: 2.0).repeatForever(autoreverses: false)
-            ) {
-                animateAvatarPulse = true
-            }
-            withAnimation(
-                .easeInOut(duration: 1.5).repeatForever(autoreverses: true)
-            ) {
-                animateDotPulse = true
-            }
-        }
-    }
 }
 
 // MARK: - Premium Interactions

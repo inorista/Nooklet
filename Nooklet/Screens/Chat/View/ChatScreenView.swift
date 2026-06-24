@@ -236,7 +236,7 @@ struct ChatScreenView: View {
                             .foregroundStyle(Color.blue)
 
                         Text(
-                            "Your messages are compiled and generated locally using Gemma 4 (2B) and transcribing with Nemotron 3.5 ASR."
+                            "Your messages are compiled and generated locally using Gemma 4 (2B)"
                         )
                         .lineLimit(2)
                         .font(.system(size: 13, weight: .medium))
@@ -410,49 +410,6 @@ struct ChatScreenView: View {
         // Check if there are no AI messages after this index
         let remaining = viewModel.messages[(index + 1)...]
         return !remaining.contains(where: { !$0.isUserMessage })
-    }
-
-    // MARK: - Cinematic Background
-    @ViewBuilder
-    func CinematicBackground() -> some View {
-        ZStack {
-            Color(red: 0.03, green: 0.03, blue: 0.05)  // Deep premium dark background
-
-            GeometryReader { geo in
-                ZStack {
-                    // Accent Glow 1
-                    Circle()
-                        .fill(Color.blue.opacity(animateBackground ? 0.2 : 0.1))
-                        .frame(width: geo.size.width * 1.3)
-                        .blur(radius: 130)
-                        .offset(
-                            x: animateBackground
-                                ? -geo.size.width * 0.3 : -geo.size.width * 0.5,
-                            y: animateBackground
-                                ? -geo.size.height * 0.2
-                                : -geo.size.height * 0.3
-                        )
-
-                    // Accent Glow 2
-                    Circle()
-                        .fill(
-                            Color.purple.opacity(
-                                animateBackground ? 0.15 : 0.05
-                            )
-                        )
-                        .frame(width: geo.size.width * 1.1)
-                        .blur(radius: 110)
-                        .offset(
-                            x: animateBackground
-                                ? geo.size.width * 0.4 : geo.size.width * 0.6,
-                            y: animateBackground
-                                ? geo.size.height * 0.4 : geo.size.height * 0.5
-                        )
-                }
-            }
-            .drawingGroup()  // Optimize rendering
-        }
-        .ignoresSafeArea()
     }
 
     // MARK: - Text Field Chat

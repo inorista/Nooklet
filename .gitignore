@@ -36,3 +36,6 @@ __pycache__/
 # Large LLM model files
 *.task
 *.litertlm
+onnx/**
+Nooklet/Helpers/onnx
+

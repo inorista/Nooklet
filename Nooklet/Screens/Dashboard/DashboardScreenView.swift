@@ -24,15 +24,15 @@ struct DashboardScreenView: View {
                     }
                     .tag(AppTab.home)
 
-                Text("Chat Screen")
+                SpeechScreenView()
                     .toolbarBackground(.visible, for: .tabBar)
                     .toolbarBackground(.ultraThinMaterial, for: .tabBar)
                     .tabItem {
                         Image(
-                            AppTab.chat.imageName(isActive: activeTab == .chat)
+                            AppTab.speech.imageName(isActive: activeTab == .speech)
                         )
                     }
-                    .tag(AppTab.chat)
+                    .tag(AppTab.speech)
 
                 Text("Settings Screen")
                     .toolbarBackground(.visible, for: .tabBar)
@@ -49,8 +49,8 @@ struct DashboardScreenView: View {
             .tint(Color(.content))
             .navigationDestination(for: DashboardRoute.self) { route in
                 switch route {
-                case .recording:
-                    RecordingScreen()
+                case .speech:
+                    SpeechScreenView()
                 case .settings:
                     Text("Settings Screen")
                 case .chat(let sessionId):

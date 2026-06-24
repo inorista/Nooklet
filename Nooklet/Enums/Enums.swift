@@ -8,23 +8,16 @@ import Foundation
 
 enum AppTab: String, CaseIterable {
     case home = "Home"
-    case chat = "Chat"
+    case speech = "Speech"
     case setting = "Setting"
 
-    var symbolImage: String {
-        return switch self {
-        case .home: "house.fill"
-        case .chat: "magnifyingglass"
-        case .setting: "gear"
-        }
-    }
 
     func imageName(isActive: Bool) -> String {
         return switch self {
         case .home:
             isActive ? "HomeActive" : "HomeInactive"
-        case .chat:
-            isActive ? "ExploreActive" : "ExploreInactive"
+        case .speech:
+            isActive ? "SpeechActive" : "SpeechInactive"
         case .setting:
             isActive ? "SettingActive" : "SettingInactive"
         }

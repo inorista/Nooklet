@@ -37,19 +37,12 @@ struct ChatBubbleView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(maxWidth: 240, maxHeight: 240)
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(Color.white.opacity(0.15), lineWidth: 1)
                     )
-                    .shadow(
-                        color: Color.black.opacity(0.2),
-                        radius: 8,
-                        x: 0,
-                        y: 4
-                    )
+                    .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
             }
 
             if !message.content.isEmpty {
@@ -60,24 +53,13 @@ struct ChatBubbleView: View {
                     .padding(.vertical, 12)
                     .background(
                         LinearGradient(
-                            colors: [
-                                Color.blue,
-                                Color(red: 0.35, green: 0.3, blue: 0.9),
-                            ],
+                            colors: [Color.blue, Color(red: 0.35, green: 0.3, blue: 0.9)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        in: RoundedRectangle(
-                            cornerRadius: 20,
-                            style: .continuous
-                        )
+                        in: RoundedRectangle(cornerRadius: 20, style: .continuous)
                     )
-                    .shadow(
-                        color: Color.blue.opacity(0.15),
-                        radius: 6,
-                        x: 0,
-                        y: 3
-                    )
+                    .shadow(color: Color.blue.opacity(0.15), radius: 6, x: 0, y: 3)
             }
             Text(message.timestamp, style: .time)
                 .font(.system(size: 10, weight: .medium))
@@ -89,108 +71,50 @@ struct ChatBubbleView: View {
     // MARK: - AI Bubble
 
     private var aiBubble: some View {
-
-        VStack(alignment: .leading, spacing: 6) {
-            if isLastAIMessage && isThinking && message.content == "thinking..."
-            {
-                ThinkingIndicatorView()
-            } else {
-                if let uiImage = message.uiImage {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: 240, maxHeight: 240)
-                        .clipShape(
-                            RoundedRectangle(
-                                cornerRadius: 20,
-                                style: .continuous
+        HStack(alignment: .top, spacing: 12) {
+            // Sleek avatar on the left
+            
+            
+            VStack(alignment: .leading, spacing: 6) {
+                if isLastAIMessage && isThinking && message.content == "thinking..." {
+                    ThinkingIndicatorView()
+                } else {
+                    if let uiImage = message.uiImage {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(maxWidth: 240, maxHeight: 240)
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
                             )
-                        )
-                        .overlay(
-                            RoundedRectangle(
-                                cornerRadius: 20,
-                                style: .continuous
-                            )
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                        )
-                        .shadow(
-                            color: Color.black.opacity(0.2),
-                            radius: 8,
-                            x: 0,
-                            y: 4
-                        )
-                }
-                if !message.content.isEmpty {
-                    VStack(alignment: .leading, spacing: 14) {
-                        ZStack(alignment: .bottomTrailing) {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.blue.opacity(0.1),
-                                            Color.purple.opacity(0.15),
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 36, height: 36)
-                                .overlay(
-                                    Circle().stroke(
-                                        Color.white.opacity(0.1),
-                                        lineWidth: 1
-                                    )
-                                )
-
-                            Image(.nooklet)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 22, height: 22)
-                                .position(x: 18, y: 18)
-                        }
-                        .frame(width: 36, height: 36)
-
+                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                    }
+                    if !message.content.isEmpty {
                         Text(message.content)
-                            .font(
-                                .system(
-                                    size: 15,
-                                    weight: .medium,
-                                    design: .rounded
-                                )
-                            )
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
                             .foregroundStyle(.white)
                             .lineSpacing(4)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color.white.opacity(0.04))
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                            )
                             .textSelection(.enabled)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.04))
-                    .background(.ultraThinMaterial)
-                    .clipShape(
-                        RoundedRectangle(
-                            cornerRadius: 20,
-                            style: .continuous
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(
-                            cornerRadius: 20,
-                            style: .continuous
-                        )
-                        .strokeBorder(
-                            Color.white.opacity(0.08),
-                            lineWidth: 1
-                        )
-                    )
                 }
+
+                Text(message.timestamp, style: .time)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.3))
+                    .padding(.horizontal, 4)
             }
-
-            Text(message.timestamp, style: .time)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.3))
-                .padding(.horizontal, 4)
         }
-
     }
 }
 

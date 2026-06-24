@@ -32,6 +32,9 @@ packages:
   SwiftyJSON:
     url: https://github.com/SwiftyJSON/SwiftyJSON.git
     from: 5.0.2
+  ONNXRuntime:
+    url: https://github.com/microsoft/onnxruntime-swift-package-manager.git
+    from: 1.24.2
 
 targets:
   Nooklet:
@@ -51,6 +54,8 @@ targets:
         product: RxSwift
       - package: SwiftyJSON
         product: SwiftyJSON
+      - package: ONNXRuntime
+        product: onnxruntime
     sources:
       - path: Nooklet
       # Models/ is referenced as a folder (not compiled) so .mlmodelc bundles

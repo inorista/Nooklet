@@ -10,7 +10,7 @@ enum AppFlow: Equatable {
 
 
 enum DashboardRoute: Hashable {
-    case recording
+    case speech
     case settings
     case chat(sessionId: UUID?)
     case chatHistory
