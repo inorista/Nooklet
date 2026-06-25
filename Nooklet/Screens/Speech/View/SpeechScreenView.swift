@@ -11,10 +11,8 @@ struct SpeechScreenView: View {
         .onTapGesture {
             KeyboardUtils.closeKeyboard()
         }
-        .onAppear {
-            Task {
-                vm.startup()
-            }
+        .task {
+            vm.startup()
         }
         .navigationTitle("Supertonic")
         .navigationBarTitleDisplayMode(.inline)

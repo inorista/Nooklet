@@ -17,7 +17,7 @@ enum AppTab: String, CaseIterable {
         case .home:
             isActive ? "HomeActive" : "HomeInactive"
         case .explore:
-            isActive ? "ExploreActive" : "ExploreInactive"
+            isActive ? "SpeechActive" : "SpeechInactive"
         case .setting:
             isActive ? "SettingActive" : "SettingInactive"
         }

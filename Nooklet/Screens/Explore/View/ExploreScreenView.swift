@@ -10,9 +10,9 @@ struct ExploreScreenView: View {
             CinematicBackground()
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 40) {
+                LazyVStack(spacing: 40) {
                     // Hero Section
-                    VStack(spacing: 24) {
+                    LazyVStack(spacing: 24) {
                         Text("Give your words\na voice.")
                             .font(
                                 .system(

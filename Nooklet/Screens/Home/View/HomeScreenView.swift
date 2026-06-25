@@ -88,15 +88,6 @@ struct HomeScreenView: View {
                             )
                             .foregroundStyle(.white)
                     }
-
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 8, height: 8)
-                        .shadow(
-                            color: .green.opacity(0.8),
-                            radius: animateDotPulse ? 8 : 2
-                        )
-                        .scaleEffect(animateDotPulse ? 1.1 : 0.9)
                 }
             }
 
@@ -412,21 +403,6 @@ struct HomeScreenView: View {
                 )
                 .offset(y: phase.isIdentity ? 0 : 20)
         }
-    }
-
-
-}
-
-// MARK: - Premium Interactions
-struct BouncyCardStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            .brightness(configuration.isPressed ? -0.1 : 0)
-            .animation(
-                .spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0),
-                value: configuration.isPressed
-            )
     }
 }
 

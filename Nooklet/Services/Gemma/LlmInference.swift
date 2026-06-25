@@ -5,9 +5,9 @@
 //  Created by Sidhant Srikumar on 5/23/25.
 //
 
-import LiteRTLM
+import CoreGraphics  // For CGImage
 import Foundation
-import CoreGraphics // For CGImage
+import LiteRTLM
 
 /// Represents the available LLM models, their bundled filenames, and display names.
 public enum ModelIdentifier: String, CaseIterable, Identifiable {
@@ -26,7 +26,8 @@ public enum ModelIdentifier: String, CaseIterable, Identifiable {
     /// - Returns: An array of `ModelIdentifier` cases that have corresponding `.litertlm` files in the bundle.
     public static func availableInBundle() -> [ModelIdentifier] {
         return ModelIdentifier.allCases.filter { modelId in
-            Bundle.main.path(forResource: modelId.rawValue, ofType: "litertlm") != nil
+            Bundle.main.path(forResource: modelId.rawValue, ofType: "litertlm")
+                != nil
         }
     }
 }
@@ -52,21 +53,39 @@ struct OnDeviceModel {
         self.identifier = modelIdentifier
         self.isVisionAvailable = true
         var metrics = LlmMetrics()
-        
+
         let fileManager = FileManager.default
 
         // Use modelIdentifier to get the correct model file
-        guard let bundleModelPath = Bundle.main.path(forResource: modelIdentifier.rawValue, ofType: "litertlm") else {
-            let errorMessage = "Critical Error: Model file '\(modelIdentifier.fileName)' not found in the app bundle. Please ensure it's added to the project and target."
+        guard
+            let bundleModelPath = Bundle.main.path(
+                forResource: modelIdentifier.rawValue,
+                ofType: "litertlm"
+            )
+        else {
+            let errorMessage =
+                "Critical Error: Model file '\(modelIdentifier.fileName)' not found in the app bundle. Please ensure it's added to the project and target."
             NSLog(errorMessage)
-            throw NSError(domain: "ModelSetupError", code: 1001, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+            throw NSError(
+                domain: "ModelSetupError",
+                code: 1001,
+                userInfo: [NSLocalizedDescriptionKey: errorMessage]
+            )
         }
 
         // Copy model to Caches directory so LiteRT-LM can write its weight cache file (.xnnpack_cache) alongside the model.
-        let cachesDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let cachesDir = fileManager.urls(
+            for: .cachesDirectory,
+            in: .userDomainMask
+        ).first!
         let modelDir = cachesDir.appendingPathComponent("LLMModels")
-        try fileManager.createDirectory(at: modelDir, withIntermediateDirectories: true)
-        let modelCopyPath = modelDir.appendingPathComponent(modelIdentifier.fileName)
+        try fileManager.createDirectory(
+            at: modelDir,
+            withIntermediateDirectories: true
+        )
+        let modelCopyPath = modelDir.appendingPathComponent(
+            modelIdentifier.fileName
+        )
 
         NSLog("Selected model: \(modelIdentifier.displayName)")
         NSLog("Bundle path: \(bundleModelPath)")
@@ -74,7 +93,9 @@ struct OnDeviceModel {
 
         // Delete stale cached model + xnnpack_cache when maxNumTokens changes
         // so the engine rebuilds with the correct KV cache dimensions.
-        let xnnCachePath = modelDir.appendingPathComponent("\(modelIdentifier.rawValue).litertlm.xnnpack_cache")
+        let xnnCachePath = modelDir.appendingPathComponent(
+            "\(modelIdentifier.rawValue).litertlm.xnnpack_cache"
+        )
         if fileManager.fileExists(atPath: xnnCachePath.path) {
             try? fileManager.removeItem(at: xnnCachePath)
             NSLog("Removed stale xnnpack_cache.")
@@ -85,7 +106,10 @@ struct OnDeviceModel {
         }
 
         NSLog("Copying model to writable Caches directory...")
-        try fileManager.copyItem(atPath: bundleModelPath, toPath: modelCopyPath.path)
+        try fileManager.copyItem(
+            atPath: bundleModelPath,
+            toPath: modelCopyPath.path
+        )
         NSLog("Model copied successfully.")
 
         // Initialize the Engine config.
@@ -96,9 +120,9 @@ struct OnDeviceModel {
         let maxTokens = 1100
 
         #if targetEnvironment(simulator)
-        let preferredBackend = Backend.cpu()
+            let preferredBackend = Backend.cpu()
         #else
-        let preferredBackend = Backend.gpu
+            let preferredBackend = Backend.gpu
         #endif
 
         var engine: Engine
@@ -121,30 +145,36 @@ struct OnDeviceModel {
             NSLog("Engine initialized with preferred backend (vision on CPU).")
         } catch {
             #if !targetEnvironment(simulator)
-            // GPU allocation failed — fall back to CPU so the app remains usable.
-            NSLog("GPU backend failed (\(error.localizedDescription)). Falling back to CPU.")
-            // Remove stale xnnpack cache before CPU retry
-            let xnnCacheRetry = modelDir.appendingPathComponent("\(modelIdentifier.rawValue).litertlm.xnnpack_cache")
-            try? fileManager.removeItem(at: xnnCacheRetry)
+                // GPU allocation failed — fall back to CPU so the app remains usable.
+                NSLog(
+                    "GPU backend failed (\(error.localizedDescription)). Falling back to CPU."
+                )
+                // Remove stale xnnpack cache before CPU retry
+                let xnnCacheRetry = modelDir.appendingPathComponent(
+                    "\(modelIdentifier.rawValue).litertlm.xnnpack_cache"
+                )
+                try? fileManager.removeItem(at: xnnCacheRetry)
 
-            let cpuConfig = try EngineConfig(
-                modelPath: modelCopyPath.path,
-                backend: Backend.cpu(),
-                visionBackend: isVisionAvailable ? .cpu() : nil,
-                maxNumTokens: maxTokens,
-                cacheDir: modelDir.path
-            )
-            engine = Engine(engineConfig: cpuConfig)
-            try await engine.initialize()
-            NSLog("Engine initialized with CPU fallback backend.")
+                let cpuConfig = try EngineConfig(
+                    modelPath: modelCopyPath.path,
+                    backend: Backend.cpu(),
+                    visionBackend: isVisionAvailable ? .cpu() : nil,
+                    maxNumTokens: maxTokens,
+                    cacheDir: modelDir.path
+                )
+                engine = Engine(engineConfig: cpuConfig)
+                try await engine.initialize()
+                NSLog("Engine initialized with CPU fallback backend.")
             #else
-            throw error
+                throw error
             #endif
         }
 
         let duration = CFAbsoluteTimeGetCurrent() - startTime
         metrics.initializationTimeInSeconds = duration
-        NSLog("Engine initialized in \(String(format: "%.2f", duration)) seconds.")
+        NSLog(
+            "Engine initialized in \(String(format: "%.2f", duration)) seconds."
+        )
 
         self.engine = engine
         self.inference = InferenceWrapper(metrics: metrics)
@@ -158,7 +188,12 @@ final class Chat {
     private let conversationConfig: ConversationConfig
     private var lastGenerationTime: TimeInterval = 0.0
 
-    init(model: OnDeviceModel, topK: Int = 64, topP: Float = 0.95, temperature: Float = 1.0) async throws {
+    init(
+        model: OnDeviceModel,
+        topK: Int = 64,
+        topP: Float = 0.95,
+        temperature: Float = 1.0
+    ) async throws {
         self.model = model
 
         let samplerConfig = try SamplerConfig(
@@ -172,25 +207,33 @@ final class Chat {
         )
         self.conversationConfig = config
 
-        self.conversation = try await model.engine.createConversation(with: config)
+        self.conversation = try await model.engine.createConversation(
+            with: config
+        )
     }
 
     func sendMessageSync(_ text: String) async throws -> String {
         let startTime = CFAbsoluteTimeGetCurrent()
-        let response = try await conversation.sendMessage(LiteRTLM.Message(text))
+        let response = try await conversation.sendMessage(
+            LiteRTLM.Message(text)
+        )
         lastGenerationTime = CFAbsoluteTimeGetCurrent() - startTime
         return response.toString
     }
 
     /// Resets the conversation to clear accumulated context, keeping the same engine and sampler config.
     func resetConversation() async throws {
-        self.conversation = try await model.engine.createConversation(with: conversationConfig)
+        self.conversation = try await model.engine.createConversation(
+            with: conversationConfig
+        )
         NSLog("Chat conversation has been reset.")
     }
 
-    func sendMessage(_ text: String, imageData: Data? = nil) async throws -> AsyncThrowingStream<String, any Error> {
+    func sendMessage(_ text: String, imageData: Data? = nil) async throws
+        -> AsyncThrowingStream<String, any Error>
+    {
         let startTime = CFAbsoluteTimeGetCurrent()
-        
+
         var contents: [LiteRTLM.Content] = []
         if let data = imageData {
             contents.append(.imageData(data))
@@ -201,17 +244,18 @@ final class Chat {
             // Provide empty text if both are empty just to avoid empty message error
             contents.append(.text(""))
         }
-        
+
         let message = LiteRTLM.Message(contents: contents, role: .user)
         let messageStream = conversation.sendMessageStream(message)
-        
+
         return AsyncThrowingStream { continuation in
             Task {
                 do {
                     for try await chunk in messageStream {
                         continuation.yield(chunk.toString)
                     }
-                    self.lastGenerationTime = CFAbsoluteTimeGetCurrent() - startTime
+                    self.lastGenerationTime =
+                        CFAbsoluteTimeGetCurrent() - startTime
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)

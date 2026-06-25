@@ -68,7 +68,7 @@ class RealmService {
         }
     }
 
-    func getChatSessions(_ prefix: Int?) throws -> [ChatSessionEntity] {
+    func getChatSessions(_ prefix: Int? = nil) throws -> [ChatSessionEntity] {
         let realm = try Realm()
         let chatSessions = realm.objects(ChatSessionEntity.self).sorted(
             by: \.updatedAt,
