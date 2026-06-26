@@ -13,10 +13,10 @@ class RegisterScreenViewModel: ObservableObject {
     @Published var firstName: String = ""
     @Published var lastName: String = ""
     @Published var birthday: Date = Date()
-    @Published var selectedAvatar: String = "Avatar1"
+    @Published var selectedAvatar: String = "avatar1"
     @Published var isAvatarSheetPresented: Bool = false
 
-    let avatars: [String] = (1...15).map { "Avatar\($0)" }
+    let avatars: [String] = (1...15).map { "avatar\($0)" }
 
     var isFormValid: Bool {
         !firstName.trimmingCharacters(in: .whitespaces).isEmpty

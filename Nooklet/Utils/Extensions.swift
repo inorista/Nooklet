@@ -56,7 +56,7 @@ struct BorderBeamEffect: ViewModifier {
 
                     if !hideFadeBorder {
                         RoundedRectangle(cornerRadius: cornerRadius)
-                            .stroke(border.tertiary, lineWidth: 0.6)
+                            .stroke(border.tertiary, lineWidth: 1.0)
                     }
 
                     //USING KEYFRAME
@@ -95,7 +95,7 @@ struct BorderBeamEffect: ViewModifier {
                                 }
 
                             RoundedRectangle(cornerRadius: cornerRadius)
-                                .stroke(borderGradient, lineWidth: 0.6)
+                                .stroke(borderGradient, lineWidth: 1.0)
                         } keyframes: { _ in
                             LinearKeyframe(1, duration: 2.5)
                         }

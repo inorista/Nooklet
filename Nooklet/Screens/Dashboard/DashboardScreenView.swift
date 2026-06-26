@@ -24,17 +24,19 @@ struct DashboardScreenView: View {
                     }
                     .tag(AppTab.home)
 
-                Text("Chat Screen")
+                ExploreScreenView()
                     .toolbarBackground(.visible, for: .tabBar)
                     .toolbarBackground(.ultraThinMaterial, for: .tabBar)
                     .tabItem {
                         Image(
-                            AppTab.chat.imageName(isActive: activeTab == .chat)
+                            AppTab.explore.imageName(
+                                isActive: activeTab == .explore
+                            )
                         )
                     }
-                    .tag(AppTab.chat)
+                    .tag(AppTab.explore)
 
-                Text("Settings Screen")
+                SettingScreenView()
                     .toolbarBackground(.visible, for: .tabBar)
                     .toolbarBackground(.ultraThinMaterial, for: .tabBar)
                     .tabItem {
@@ -49,10 +51,10 @@ struct DashboardScreenView: View {
             .tint(Color(.content))
             .navigationDestination(for: DashboardRoute.self) { route in
                 switch route {
-                case .recording:
-                    RecordingScreen()
+                case .speech:
+                    SpeechScreenView()
                 case .settings:
-                    Text("Settings Screen")
+                    SettingScreenView()
                 case .chat(let sessionId):
                     ChatScreenView(sessionId: sessionId)
                 case .chatHistory:
@@ -60,6 +62,7 @@ struct DashboardScreenView: View {
                 }
 
             }
+            .navigationViewStyle(.stack)
         }
     }
 }

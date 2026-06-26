@@ -6,6 +6,7 @@ build/
 xcuserdata/
 *.xcuserstate
 .swiftpm/
+*.xcarchive
 
 # macOS
 .DS_Store
@@ -36,3 +37,7 @@ __pycache__/
 # Large LLM model files
 *.task
 *.litertlm
+onnx/**
+Nooklet/Helpers/onnx
+*.onnx
+

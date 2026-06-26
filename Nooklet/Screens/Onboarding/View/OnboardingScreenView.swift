@@ -16,10 +16,11 @@ struct OnboardingScreenView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            RadientBackground()
+            CinematicBackground()
             BodyContent()
             BackButton()
         }
+        .preferredColorScheme(.dark)
     }
 
     @ViewBuilder
@@ -79,121 +80,113 @@ struct OnboardingScreenView: View {
 
     @ViewBuilder
     func BodyContent() -> some View {
-        VStack(spacing: 10) {
-            GeometryReader {
-                let size = $0.size
-                ScrollView(.horizontal) {
-                    HStack(spacing: 0) {
-                        ForEach(
-                            viewModel.onboardingItems.indices,
-                            id: \.self
-                        ) {
-                            index in
+        VStack {
+            VStack(spacing: 10) {
+                GeometryReader {
+                    let size = $0.size
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 0) {
+                            ForEach(
+                                viewModel.onboardingItems.indices,
+                                id: \.self
+                            ) {
+                                index in
 
-                            let currentItem = viewModel.onboardingItems[
-                                index
-                            ]
-                            let isActive = viewModel.currentStep == index
+                                let currentItem = viewModel.onboardingItems[
+                                    index
+                                ]
+                                let isActive = viewModel.currentStep == index
 
-                            VStack(spacing: 6) {
-                                Spacer()
-                                Image(currentItem.image)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(maxHeight: viewModel.currentStep == 2 ? 250 : 320)
-                                    .padding(.all, 20)
-                                    .shadow(
-                                        color: Color(.white).opacity(0.4),
-                                        radius: 20,
-                                        x: 10,
-                                        y: 10,
-                                    )
+                                VStack(spacing: 6) {
+                                    Spacer()
+                                    Image(currentItem.image)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(maxHeight: viewModel.currentStep == 2 ? 250 : 320)
+                                        .padding(.all, 20)
+                                        .shadow(
+                                            color: Color(.white).opacity(0.4),
+                                            radius: 20,
+                                            x: 10,
+                                            y: 10
+                                        )
 
-                                Spacer()
-                                Text(currentItem.title)
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                    .lineLimit(1)
-                                    .foregroundColor(Color(.subContent))
+                                    Spacer()
+                                    Text(currentItem.title)
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                        .lineLimit(1)
+                                        .foregroundColor(.white)
 
-                                Text(currentItem.description)
-                                    .font(.callout)
-                                    .fontWeight(.semibold)
-                                    .lineLimit(2)
-                                    .multilineTextAlignment(.center)
-                                    .foregroundColor(
-                                        Color(.subContent).opacity(0.8)
-                                    )
-                                    .padding(.horizontal, 12)
+                                    Text(currentItem.description)
+                                        .font(.callout)
+                                        .fontWeight(.semibold)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.center)
+                                        .foregroundColor(
+                                            .white.opacity(0.8)
+                                        )
+                                        .padding(.horizontal, 12)
+                                }
+                                .frame(width: size.width)
+                                .compositingGroup()
+                                .blur(radius: isActive ? 0 : 30)
+                                .opacity(isActive ? 1 : 0)
                             }
-                            .frame(width: size.width)
-                            .compositingGroup()
-                            .blur(radius: isActive ? 0 : 30)
-                            .opacity(isActive ? 1 : 0)
                         }
                     }
-                }
-                .scrollIndicators(.hidden)
-                .scrollDisabled(true)
-                .scrollTargetBehavior(.paging)
-                .scrollPosition(
-                    id: .init(
-                        get: {
-                            return viewModel.currentStep
-                        },
-                        set: {
-                            _ in
-                        }
+                    .scrollIndicators(.hidden)
+                    .scrollDisabled(true)
+                    .scrollTargetBehavior(.paging)
+                    .scrollPosition(
+                        id: .init(
+                            get: {
+                                return viewModel.currentStep
+                            },
+                            set: {
+                                _ in
+                            }
+                        )
                     )
+                }
+
+                HStack(spacing: 6) {
+                    ForEach(viewModel.onboardingItems.indices, id: \.self) {
+                        index in
+                        let isActive: Bool = viewModel.currentStep == index
+                        Capsule()
+                            .fill(
+                                .white.opacity(isActive ? 1 : 0.4)
+                            )
+                            .frame(
+                                width: isActive ? 26 : 6,
+                                height: 6
+                            )
+                            .animation(.bouncy(duration: 0.5), value: isActive)
+
+                    }
+                }
+                .padding(.bottom, 5)
+                .padding(.top, 10)
+
+                CustomButton(
+                    buttonColor: Color(.button),
+                    title: viewModel.currentStep == 2 ? "Get Started" : "Continue",
+                    shadowColor: Color(.button),
+                    action: {
+                        withAnimation(animation) {
+                            let finished = viewModel.onContinuePressed()
+                            if finished {
+                                coordinator.onOnboardingCompleted()
+                            }
+                        }
+                    }
                 )
             }
-
-            HStack(spacing: 6) {
-                ForEach(viewModel.onboardingItems.indices, id: \.self) {
-                    index in
-                    let isActive: Bool = viewModel.currentStep == index
-                    Capsule()
-                        .fill(
-                            Color(.subContent).opacity(isActive ? 1 : 0.4)
-                        )
-                        .frame(
-                            width: isActive ? 26 : 6,
-                            height: 6
-                        )
-                        .animation(.bouncy(duration: 0.5), value: isActive)
-
-                }
-            }
-            .padding(.bottom, 5)
-            .padding(.top, 10)
-
-            CustomButton(
-                buttonColor: Color(.button),
-                title: viewModel.currentStep == 2 ? "Get Started" : "Continue",
-                shadowColor: Color(.button),
-                action: {
-                    withAnimation(animation) {
-                        let finished = viewModel.onContinuePressed()
-                        if finished {
-                            coordinator.onOnboardingCompleted()
-                        }
-                    }
-                }
-            )
+            .padding(.vertical, 20)
+            .padding(.horizontal, 20)
+            .frame(maxWidth: 450)
         }
-        .padding(.vertical, 20)
-        .padding(.horizontal, 20)
-    }
-
-    @ViewBuilder
-    func RadientBackground() -> some View {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Color(.radientPrimary), Color(.radientSecondary),
-            ]),
-            startPoint: .topTrailing,
-            endPoint: .bottomLeading
-        )
-        .ignoresSafeArea()
+        .frame(maxWidth: .infinity)
     }
 }

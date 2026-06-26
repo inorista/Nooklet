@@ -20,9 +20,9 @@ class OnboardingViewModel: ObservableObject {
         ),
 
         OnboardingItem(
-            title: "Speech-to-Text realtime",
+            title: "Text-to-Speech",
             description:
-                "We use the Nemotron 3.5 ASR model to deliver fast and highly accurate speech recognition.",
+                "Our text-to-speech capability is powered by the Supernonic 3 model.",
             image: "Soundwave"
         ),
 
