@@ -334,6 +334,7 @@ struct ChatScreenView: View {
 
                         Spacer()
                     }
+                    .frame(maxWidth: 800)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.bottom, 140)
                 }
@@ -368,6 +369,8 @@ struct ChatScreenView: View {
                                 .id("bottom_anchor")
                         }
                         .padding(.top, 12)
+                        .frame(maxWidth: 800)
+                        .frame(maxWidth: .infinity)
                     }
                     .applyScrollEdgeEffectStyle()
                     .onChange(of: viewModel.messages.count) { _, _ in
@@ -761,6 +764,7 @@ struct ChatScreenView: View {
                     isEnabled: !viewModel.isModelLoading
                 )
             }
+            .frame(maxWidth: 800)
             .padding(.horizontal)
             .padding(.bottom, 12)
         }

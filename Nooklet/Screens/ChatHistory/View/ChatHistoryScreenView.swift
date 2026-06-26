@@ -9,26 +9,33 @@ import SwiftUI
 
 struct ChatHistoryScreenView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var viewModel = ChatHistoryScreenViewModel()
 
     var body: some View {
         ZStack {
             CinematicBackground()
             ScrollView {
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 12),
-                        GridItem(.flexible(), spacing: 12),
-                    ],
-                    alignment: .leading,
-                    spacing: 10
-                ) {
-                    ForEach(viewModel.chatSessionHistories) {
-                        item in
-                        ChatHistoryCard(item: item)
+                VStack {
+                    LazyVGrid(
+                        columns: horizontalSizeClass == .regular ? [
+                            GridItem(.adaptive(minimum: 300), spacing: 16)
+                        ] : [
+                            GridItem(.flexible(), spacing: 12),
+                            GridItem(.flexible(), spacing: 12)
+                        ],
+                        alignment: .leading,
+                        spacing: horizontalSizeClass == .regular ? 16 : 10
+                    ) {
+                        ForEach(viewModel.chatSessionHistories) {
+                            item in
+                            ChatHistoryCard(item: item)
+                        }
                     }
+                    .padding()
+                    .frame(maxWidth: 1000)
                 }
-                .padding()
+                .frame(maxWidth: .infinity)
             }
         }
         .navigationTitle("Chat History")

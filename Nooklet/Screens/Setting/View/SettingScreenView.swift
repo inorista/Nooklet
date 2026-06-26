@@ -21,22 +21,26 @@ struct SettingScreenView: View {
                 .offset(x: 150, y: 300)
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    HStack {
-                        Text("Settings")
-                            .font(.system(size: 34, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
-                    
-                    profileCard
-                    
-                    //appSettingsCard
+                VStack {
+                    VStack(spacing: 24) {
+                        HStack {
+                            Text("Settings")
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 20)
+                        
+                        profileCard
+                        
+                        //appSettingsCard
 
-                    Spacer(minLength: 40)
+                        Spacer(minLength: 40)
+                    }
+                    .frame(maxWidth: 450)
                 }
+                .frame(maxWidth: .infinity)
             }
         }
         .sheet(isPresented: $showEditProfile) {

@@ -23,133 +23,137 @@ struct RegisterUserView: View {
             CinematicBackground()
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 32) {
-                    Spacer(minLength: 40)
+                VStack {
+                    VStack(spacing: 32) {
+                        Spacer(minLength: 40)
 
-                    // Welcome Title
-                    VStack(spacing: 8) {
-                        Text("JOIN THE")
-                            .font(
-                                .system(
-                                    size: 13,
-                                    weight: .bold,
-                                    design: .rounded
-                                )
-                            )
-                            .tracking(4.0)
-                            .foregroundStyle(.white.opacity(0.5))
-
-                        Text("Nooklet")
-                            .font(
-                                .system(
-                                    size: 48,
-                                    weight: .black,
-                                    design: .rounded
-                                )
-                            )
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.white, .white.opacity(0.7)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    }
-
-                    AvatarSection()
-                        .padding(.vertical, 8)
-
-                    // Fields Container
-                    VStack(spacing: 16) {
-                        CustomTextField(
-                            placeholder: "First Name",
-                            text: $viewModel.firstName,
-                            icon: "person.fill",
-                            focusBinding: $focusedField,
-                            field: .firstName,
-                            submitLabel: .next
-                        )
-                        CustomTextField(
-                            placeholder: "Last Name",
-                            text: $viewModel.lastName,
-                            icon: "person.text.rectangle.fill",
-                            focusBinding: $focusedField,
-                            field: .lastName,
-                            submitLabel: .done
-                        )
-                    }
-                    .padding(24)
-                    .background(Color.black.opacity(0.3))
-                    .background(.ultraThinMaterial)
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                            .strokeBorder(.white.opacity(0.1), lineWidth: 1)
-                    )
-                    .onSubmit {
-                        moveToNextField()
-                    }
-
-                    Spacer(minLength: 40)
-
-                    // Premium Button
-                    Button {
-                        UIImpactFeedbackGenerator(style: .rigid)
-                            .impactOccurred()
-                        Task {
-                            await viewModel.onRegister()
-                            coordinator.onRegistrationCompleted()
-                        }
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text("Continue")
+                        // Welcome Title
+                        VStack(spacing: 8) {
+                            Text("JOIN THE")
                                 .font(
                                     .system(
-                                        size: 18,
+                                        size: 13,
                                         weight: .bold,
                                         design: .rounded
                                     )
                                 )
-                                .foregroundStyle(.black)
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(.black)
-                            Spacer()
+                                .tracking(4.0)
+                                .foregroundStyle(.white.opacity(0.5))
+
+                            Text("Nooklet")
+                                .font(
+                                    .system(
+                                        size: 48,
+                                        weight: .black,
+                                        design: .rounded
+                                    )
+                                )
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.white, .white.opacity(0.7)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                         }
-                        .padding(.vertical, 18)
-                        .background(
-                            LinearGradient(
-                                colors: [.white, .white.opacity(0.8)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+
+                        AvatarSection()
+                            .padding(.vertical, 8)
+
+                        // Fields Container
+                        VStack(spacing: 16) {
+                            CustomTextField(
+                                placeholder: "First Name",
+                                text: $viewModel.firstName,
+                                icon: "person.fill",
+                                focusBinding: $focusedField,
+                                field: .firstName,
+                                submitLabel: .next
                             )
-                        )
+                            CustomTextField(
+                                placeholder: "Last Name",
+                                text: $viewModel.lastName,
+                                icon: "person.text.rectangle.fill",
+                                focusBinding: $focusedField,
+                                field: .lastName,
+                                submitLabel: .done
+                            )
+                        }
+                        .padding(24)
+                        .background(Color.black.opacity(0.3))
+                        .background(.ultraThinMaterial)
                         .clipShape(
-                            RoundedRectangle(
-                                cornerRadius: 24,
-                                style: .continuous
-                            )
+                            RoundedRectangle(cornerRadius: 32, style: .continuous)
                         )
-                        .shadow(
-                            color: .white.opacity(0.2),
-                            radius: 10,
-                            x: 0,
-                            y: 5
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                                .strokeBorder(.white.opacity(0.1), lineWidth: 1)
+                        )
+                        .onSubmit {
+                            moveToNextField()
+                        }
+
+                        Spacer(minLength: 40)
+
+                        // Premium Button
+                        Button {
+                            UIImpactFeedbackGenerator(style: .rigid)
+                                .impactOccurred()
+                            Task {
+                                await viewModel.onRegister()
+                                coordinator.onRegistrationCompleted()
+                            }
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Text("Continue")
+                                    .font(
+                                        .system(
+                                            size: 18,
+                                            weight: .bold,
+                                            design: .rounded
+                                        )
+                                    )
+                                    .foregroundStyle(.black)
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(.black)
+                                Spacer()
+                            }
+                            .padding(.vertical, 18)
+                            .background(
+                                LinearGradient(
+                                    colors: [.white, .white.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: 24,
+                                    style: .continuous
+                                )
+                            )
+                            .shadow(
+                                color: .white.opacity(0.2),
+                                radius: 10,
+                                x: 0,
+                                y: 5
+                            )
+                        }
+                        .buttonStyle(BouncyCardStyle())
+                        .opacity(viewModel.isFormValid ? 1 : 0.5)
+                        .disabled(!viewModel.isFormValid)
+                        .animation(
+                            .easeInOut(duration: 0.3),
+                            value: viewModel.isFormValid
                         )
                     }
-                    .buttonStyle(BouncyCardStyle())
-                    .opacity(viewModel.isFormValid ? 1 : 0.5)
-                    .disabled(!viewModel.isFormValid)
-                    .animation(
-                        .easeInOut(duration: 0.3),
-                        value: viewModel.isFormValid
-                    )
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
+                    .frame(maxWidth: 450)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
+                .frame(maxWidth: .infinity)
             }
             .applyScrollEdgeEffectStyle()
             .scrollDismissesKeyboard(.interactively)

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ExploreScreenView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var vm = ExploreViewModel()
     @State private var isAnimatingCTA = false
 
@@ -16,7 +17,7 @@ struct ExploreScreenView: View {
                         Text("Give your words\na voice.")
                             .font(
                                 .system(
-                                    size: 32,
+                                    size: UIDevice.current.userInterfaceIdiom == .pad ? 56 : 32,
                                     weight: .heavy,
                                     design: .rounded
                                 )
@@ -117,11 +118,13 @@ struct ExploreScreenView: View {
                             .padding(.horizontal, 24)
 
                         LazyVGrid(
-                            columns: [
-                                GridItem(.flexible(), spacing: 16),
-                                GridItem(.flexible(), spacing: 16),
+                            columns: horizontalSizeClass == .regular ? [
+                                GridItem(.adaptive(minimum: 280), spacing: 20)
+                            ] : [
+                                GridItem(.flexible(), spacing: 20),
+                                GridItem(.flexible(), spacing: 20)
                             ],
-                            spacing: 16
+                            spacing: 20
                         ) {
                             ForEach(vm.voiceSamples) { sample in
                                 VoiceSampleCard(
@@ -139,6 +142,8 @@ struct ExploreScreenView: View {
 
                     Spacer(minLength: 80)
                 }
+                .frame(maxWidth: 1000)
+                .frame(maxWidth: .infinity)
             }
         }
     }

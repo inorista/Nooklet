@@ -9,6 +9,7 @@ import SwiftUI
 
 struct HomeScreenView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var viewModel = HomeViewModel()
     @State private var isNewChatPressed = false
     @State private var animateAvatarPulse = false
@@ -19,14 +20,18 @@ struct HomeScreenView: View {
             CinematicBackground()
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 36) {
-                    GreetingUser()
-                    BentoGridSection()
-                    ChatHistory()
+                VStack {
+                    VStack(spacing: 36) {
+                        GreetingUser()
+                        BentoGridSection()
+                        ChatHistory()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 32)
+                    .padding(.bottom, 48)
+                    .frame(maxWidth: 800)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 32)
-                .padding(.bottom, 48)
+                .frame(maxWidth: .infinity)
             }
             .applyScrollEdgeEffectStyle()
         }
@@ -122,9 +127,9 @@ struct HomeScreenView: View {
                 ModelStatusBentoCard()
                 VoiceCapabilitiesBentoCard()
             }
-            .frame(width: 150)
+            .frame(width: horizontalSizeClass == .regular ? 240 : 150)
         }
-        .frame(height: 240)
+        .frame(height: horizontalSizeClass == .regular ? 280 : 240)
     }
 
     // MARK: - New Chat Bento Card

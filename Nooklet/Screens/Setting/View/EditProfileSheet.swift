@@ -26,63 +26,67 @@ struct EditProfileSheet: View {
                 Color(.background).ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 24) {
-                        // Tappable Avatar
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            isAvatarSheetPresented = true
-                        }) {
-                            ZStack(alignment: .bottomTrailing) {
-                                Image(selectedAvatar)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 120, height: 120)
-                                    .clipShape(Circle())
-                                    .overlay(
-                                        Circle()
-                                            .stroke(
-                                                LinearGradient(
-                                                    colors: [.white.opacity(0.5), .white.opacity(0.1)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                ),
-                                                lineWidth: 2
-                                            )
-                                    )
-                                    .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
-
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.black.opacity(0.6))
-                                        .background(.ultraThinMaterial)
+                    VStack {
+                        VStack(spacing: 24) {
+                            // Tappable Avatar
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                isAvatarSheetPresented = true
+                            }) {
+                                ZStack(alignment: .bottomTrailing) {
+                                    Image(selectedAvatar)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 120, height: 120)
                                         .clipShape(Circle())
-                                        .frame(width: 36, height: 36)
                                         .overlay(
-                                            Circle().stroke(.white.opacity(0.2), lineWidth: 1)
+                                            Circle()
+                                                .stroke(
+                                                    LinearGradient(
+                                                        colors: [.white.opacity(0.5), .white.opacity(0.1)],
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    ),
+                                                    lineWidth: 2
+                                                )
                                         )
+                                        .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 6)
 
-                                    Image(systemName: "camera.fill")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(.white)
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.black.opacity(0.6))
+                                            .background(.ultraThinMaterial)
+                                            .clipShape(Circle())
+                                            .frame(width: 36, height: 36)
+                                            .overlay(
+                                                Circle().stroke(.white.opacity(0.2), lineWidth: 1)
+                                            )
+
+                                        Image(systemName: "camera.fill")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundStyle(.white)
+                                    }
+                                    .offset(x: 0, y: 0)
                                 }
-                                .offset(x: 0, y: 0)
                             }
-                        }
-                        .buttonStyle(BouncyCardStyle())
-                        .padding(.top, 32)
+                            .buttonStyle(BouncyCardStyle())
+                            .padding(.top, 32)
 
-                        Text("Tap to change avatar")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.5))
-                        
-                        VStack(spacing: 16) {
-                            customTextField(title: "First Name", text: $firstName)
-                            customTextField(title: "Last Name", text: $lastName)
+                            Text("Tap to change avatar")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.5))
+                            
+                            VStack(spacing: 16) {
+                                customTextField(title: "First Name", text: $firstName)
+                                customTextField(title: "Last Name", text: $lastName)
+                            }
+                            .padding(.horizontal, 24)
+                            
+                            Spacer()
                         }
-                        .padding(.horizontal, 24)
-                        
-                        Spacer()
+                        .frame(maxWidth: 450)
                     }
+                    .frame(maxWidth: .infinity)
                 }
             }
             .navigationTitle("Edit Profile")

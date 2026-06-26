@@ -29,7 +29,9 @@ struct DashboardScreenView: View {
                     .toolbarBackground(.ultraThinMaterial, for: .tabBar)
                     .tabItem {
                         Image(
-                            AppTab.explore.imageName(isActive: activeTab == .explore)
+                            AppTab.explore.imageName(
+                                isActive: activeTab == .explore
+                            )
                         )
                     }
                     .tag(AppTab.explore)
@@ -60,6 +62,7 @@ struct DashboardScreenView: View {
                 }
 
             }
+            .navigationViewStyle(.stack)
         }
     }
 }
